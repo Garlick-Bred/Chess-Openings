@@ -4,6 +4,7 @@ import { useCourse, useDeck } from '../course';
 import { curriculumFor, deckDueFor, nextExerciseRoute, surpriseLines } from '../school';
 import { StatusPill, niceDay } from '../components/ui';
 import { GRADUATE_DAYS, REVIEW_DAYS, MAX_REVIEWS_PER_DAY } from '@shared/curriculum.js';
+import { SPAR } from '@shared/sparring.js';
 import { plural } from './Home';
 
 export default function TrainPage() {
@@ -14,6 +15,7 @@ export default function TrainPage() {
   const today = localDay();
   const cur = curriculumFor(me, course);
   const due = deckDueFor(me, deck);
+  const sparToday = me.today.spar ?? 0;
   const start = () => go(nextExerciseRoute(me, course, deck) ?? '/lines');
   const deckStats = deck
     ? {
@@ -47,8 +49,8 @@ export default function TrainPage() {
           <h1>Spaced repetition for your repertoire</h1>
           <p className="muted small">
             Learn {cur.active.length > 1 ? 'three lines at a time' : 'one line at a time'}. The first run of a line each day is the test: get every move right on {GRADUATE_DAYS}{' '}
-            different days and it graduates. Graduated lines come back for timed check-ups after {REVIEW_DAYS.join(', ')} days. Positions from your own games are mixed
-            in between lines.
+            different days and it graduates. Graduated lines come back for timed check-ups after {REVIEW_DAYS.join(', ')} days. Positions from your own games and
+            sparring rounds against club players' moves are mixed in between lines.
           </p>
         </div>
         <button className="btn primary big" onClick={start}>
@@ -79,6 +81,18 @@ export default function TrainPage() {
         {cur.todo.length === 0 && cur.active.length > 0 && (
           <p className="small muted">Today’s tests are done. Extra practice still fills half a clove, and new lines move in as these graduate.</p>
         )}
+      </section>
+
+      <section className="card spar-card">
+        <h3>🥊 Sparring rounds</h3>
+        <p className="small muted">
+          White plays the moves real club players play, picked in proportion to how often they play them in the Lichess database (players rated 1000–1800, blitz and
+          rapid). Stay in your repertoire, and when White slips, punish it: nobody warns you. Off the course, Stockfish runs in your browser to judge your moves.
+          Opening School adds {SPAR.PER_DAY} rounds a day ({sparToday} played today).
+        </p>
+        <button className="btn" onClick={() => go(`/spar?r=${Date.now()}`)}>
+          🥊 Spar a round
+        </button>
       </section>
 
       <section className="card">

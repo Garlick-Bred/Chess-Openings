@@ -12,12 +12,13 @@ import { streakInfo, shieldDaysToUse, weaveBraid, rollGolden, goldenBonus, BRAID
 import { runScore, rateAttempt, startingRating, TIMED_BONUS } from '../shared/rating.js';
 import { lineAtLevel, advanceLine, advanceDeck, GRADUATE_DAYS } from '../shared/curriculum.js';
 import { ACHIEVEMENTS, newlyUnlocked } from '../shared/achievements.js';
+import { SPAR } from '../shared/sparring.js';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EPS = 1e-9;
 const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
 const SURPRISE_RATING = 1150;
-const MODES = ['learn', 'review', 'extra', 'free', 'deck'];
+const MODES = ['learn', 'review', 'extra', 'free', 'deck', 'spar'];
 const CHAPTER_LINES = Object.fromEntries(CHAPTERS.map((c) => [c.id, c.lines]));
 
 export function httpError(status, message) {
@@ -120,7 +121,10 @@ export async function getTotals(store, userId, today) {
       `SELECT COALESCE(SUM(points),0) pts, COALESCE(SUM(success),0) runs,
               COALESCE(SUM(CASE WHEN success AND misses = 0 AND idea_hints = 0 AND move_hints = 0 THEN 1 ELSE 0 END),0) clean,
               COALESCE(SUM(golden),0) golden,
-              COALESCE(SUM(CASE WHEN success AND kind = 'punish' THEN 1 ELSE 0 END),0) + COALESCE(SUM(CASE WHEN surprise_found = 1 THEN 1 ELSE 0 END),0) punished,
+              COALESCE(SUM(CASE WHEN success AND kind = 'punish' THEN 1 ELSE 0 END),0) + COALESCE(SUM(CASE WHEN surprise_found = 1 THEN 1 ELSE 0 END),0)
+                + COALESCE(SUM(CASE WHEN kind = 'spar' THEN punished ELSE 0 END),0) punished,
+              COALESCE(SUM(CASE WHEN kind = 'spar' AND points > 0 THEN 1 ELSE 0 END),0) spar_rounds,
+              COALESCE(SUM(CASE WHEN kind = 'spar' THEN punished ELSE 0 END),0) spar_punished,
               COALESCE(SUM(CASE WHEN surprise_found = 1 THEN 1 ELSE 0 END),0) surprises,
               COALESCE(SUM(CASE WHEN success AND kind = 'mistake' THEN 1 ELSE 0 END),0) fixed,
               COALESCE(SUM(CASE WHEN success AND timed = 1 AND slow_moves = 0 THEN 1 ELSE 0 END),0) timed_clean,
@@ -152,6 +156,8 @@ export async function getTotals(store, userId, today) {
     mistakesFixed: a.fixed,
     timedClean: a.timed_clean,
     threeStars: a.three_stars,
+    sparRounds: a.spar_rounds,
+    sparPunished: a.spar_punished,
     bulbs: b.bulbs,
     streak: streak.streak,
     shields: prof.shields,
@@ -173,7 +179,8 @@ export async function getDay(store, userId, day) {
     store.get('SELECT cloves, bulb_done, bonus FROM days WHERE user_id = ? AND day = ?', userId, day),
     store.get(
       `SELECT COALESCE(SUM(CASE WHEN mode = 'review' THEN 1 ELSE 0 END),0) reviews,
-              COALESCE(SUM(CASE WHEN kind != 'line' THEN 1 ELSE 0 END),0) deck,
+              COALESCE(SUM(CASE WHEN kind IN ('mistake', 'punish') THEN 1 ELSE 0 END),0) deck,
+              COALESCE(SUM(CASE WHEN kind = 'spar' THEN 1 ELSE 0 END),0) spar,
               COUNT(*) runs, COALESCE(SUM(points),0) points, COALESCE(SUM(success),0) successes
        FROM attempts WHERE user_id = ? AND day = ?`,
       userId,
@@ -188,6 +195,7 @@ export async function getDay(store, userId, day) {
     size: BULB_CLOVES,
     reviews: counts?.reviews ?? 0,
     deck: counts?.deck ?? 0,
+    spar: counts?.spar ?? 0,
     runs: counts?.runs ?? 0,
     points: (counts?.points ?? 0) + (row?.bonus ?? 0),
     successes: counts?.successes ?? 0,
@@ -199,7 +207,7 @@ export async function getDay(store, userId, day) {
  * result screen needs.
  */
 export async function recordAttempt(store, user, body, opts = {}) {
-  const kind = ['line', 'mistake', 'punish'].includes(body.kind) ? body.kind : null;
+  const kind = ['line', 'mistake', 'punish', 'spar'].includes(body.kind) ? body.kind : null;
   if (!kind) throw httpError(400, 'Unknown exercise kind');
   const day = DAY_RE.test(body.day ?? '') ? body.day : new Date().toISOString().slice(0, 10);
   const profile0 = await ensureProfile(store, user);
@@ -207,12 +215,17 @@ export async function recordAttempt(store, user, body, opts = {}) {
   if (kind === 'line') {
     item = LINE_BY_ID[body.itemId];
     if (!item) throw httpError(400, 'Unknown line');
+  } else if (kind === 'spar') {
+    // A sparring round: White's moves came from club games, so there is no
+    // fixed item. The chapter is the course system the round ran into, if any.
+    const chapter = CHAPTER_LINES[body.chapter] ? body.chapter : null;
+    item = { id: 'spar', chapter, rating: SPAR.RATING, blackMoves: int(body.blackMoves, 1, SPAR.MAX_BLACK_MOVES) };
   } else {
     item = (deckFor(profile0) ?? []).find((d) => d.id === body.itemId && d.kind === kind);
     if (!item) throw httpError(400, 'Unknown deck position');
   }
   await applyShields(store, user.id, day);
-  const [progressBefore, prow, drow, dayRow0, profile, alreadyRows, recentToday, sdBefore] = await Promise.all([
+  const [progressBefore, prow, drow, dayRow0, profile, alreadyRows, recentToday, sdBefore, sparToday] = await Promise.all([
     getProgress(store, user.id),
     kind === 'line'
       ? store.get('SELECT status, clean_days, last_day, review_due, review_step FROM progress WHERE user_id = ? AND item_id = ?', user.id, item.id)
@@ -223,6 +236,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
     store.all('SELECT achievement_id FROM achievements WHERE user_id = ?', user.id),
     store.all('SELECT success, misses, idea_hints, move_hints FROM attempts WHERE user_id = ? AND day = ? ORDER BY id DESC LIMIT 6', user.id, day),
     streakDays(store, user.id),
+    kind === 'spar' ? store.get("SELECT COUNT(*) n FROM attempts WHERE user_id = ? AND day = ? AND kind = 'spar'", user.id, day) : null,
   ]);
 
   const success = !!body.success;
@@ -232,11 +246,16 @@ export async function recordAttempt(store, user, body, opts = {}) {
       ? { san: String(body.surprise.san ?? '').slice(0, 10), found: !!body.surprise.found, grade: String(body.surprise.grade ?? '').slice(0, 12) }
       : null;
   let mode = MODES.includes(body.mode) ? body.mode : kind === 'line' ? 'free' : 'deck';
-  if (kind !== 'line') mode = 'deck';
+  if (kind === 'mistake' || kind === 'punish') mode = 'deck';
+  if (kind === 'spar') mode = 'spar';
+  if (kind !== 'spar' && mode === 'spar') mode = 'free';
+  // Sparring: how many of White's slips there were, and how many you punished.
+  const slips = kind === 'spar' && Array.isArray(body.slips) ? body.slips.slice(0, SPAR.MAX_BLACK_MOVES) : [];
+  const punished = slips.filter((x) => x && x.found).length;
   const run = {
     kind,
     // A surprise run stops early: score the moves actually played.
-    blackMoves: kind === 'line' ? (body.surprise ? Math.max(1, Math.min(item.blackMoves, int(body.userMoves, 1, 100))) : item.blackMoves) : 1,
+    blackMoves: kind === 'line' ? (body.surprise ? Math.max(1, Math.min(item.blackMoves, int(body.userMoves, 1, 100))) : item.blackMoves) : kind === 'spar' ? item.blackMoves : 1,
     success,
     misses: int(body.misses, 0, 100),
     ideaHints: int(body.ideaHints, 0, 100),
@@ -244,6 +263,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
     timed: !!body.timed && kind === 'line',
     slowMoves: int(body.slowMoves, 0, 100),
     surprise,
+    punished,
     lessonReplay,
   };
   if (success && run.misses > 0) throw httpError(400, 'A run with misses is not a success');
@@ -268,7 +288,8 @@ export async function recordAttempt(store, user, body, opts = {}) {
   let points = score.total;
 
   // Opening School: where this exercise stood, and the update.
-  const atLevel = kind === 'line' ? lineAtLevel(progressBefore.lines[item.id], day) && !surprise : true;
+  // Sparring rounds beyond the day's two count as extra practice for the bulb.
+  const atLevel = kind === 'line' ? lineAtLevel(progressBefore.lines[item.id], day) && !surprise : kind === 'spar' ? (sparToday?.n ?? 0) < SPAR.PER_DAY : true;
   let school = null;
   let deckState = null;
   if (kind === 'line') {
@@ -276,22 +297,29 @@ export async function recordAttempt(store, user, body, opts = {}) {
     // A replay right after the lesson is from memory, so it counts as the day's
     // test; a surprise run stops early and never does.
     school = advanceLine(prev, { success, slow: run.timed && run.slowMoves > 0, counted: !surprise }, day);
-  } else {
+  } else if (kind !== 'spar') {
     const prev = drow ? { status: drow.status, step: drow.step, due: drow.due, lastDay: drow.last_day } : null;
     deckState = advanceDeck(prev, { success }, day);
   }
 
   // Opening rating.
   const ratingBefore = profile.op_rating ?? startingRating(user.rating);
-  const rated = !lessonReplay;
+  // Sparring rounds have no fixed difficulty, so they leave the rating alone.
+  const rated = !lessonReplay && kind !== 'spar';
   const quality = surprise ? (success && surprise.found ? 1 : 0) : runScore(run);
   const rating = rated
     ? rateAttempt({ rating: ratingBefore, games: profile.op_games ?? 0, puzzle, score: quality, anchor: user.rating })
     : { before: ratingBefore, after: ratingBefore, delta: 0, puzzle };
 
   // Garlick bulb.
-  let cloveGain = cloveValue({ success, mode: atLevel || kind !== 'line' ? mode : 'extra', moveHints: run.moveHints, lessonReplay });
-  const cloveNote = success && !lessonReplay && cloveGain < 1 - EPS ? cloveShortfall({ mode: atLevel || kind !== 'line' ? mode : 'extra', moveHints: run.moveHints }) : null;
+  const cloveMode = atLevel || kind === 'mistake' || kind === 'punish' ? mode : 'extra';
+  let cloveGain = cloveValue({ success, mode: cloveMode, moveHints: run.moveHints, lessonReplay });
+  const cloveNote =
+    success && !lessonReplay && cloveGain < 1 - EPS
+      ? kind === 'spar'
+        ? `you've already sparred ${SPAR.PER_DAY} rounds today.`
+        : cloveShortfall({ mode: cloveMode, moveHints: run.moveHints })
+      : null;
   let lessonCloveCapped = false;
   if (cloveGain > 0 && lessonReplay) {
     const used = await store.get('SELECT COUNT(*) n FROM attempts WHERE user_id = ? AND day = ? AND lesson_replay = 1 AND clove_gain > 0', user.id, day);
@@ -324,14 +352,21 @@ export async function recordAttempt(store, user, body, opts = {}) {
   }
   const goldenSince = !goldenEligible ? (profile.golden_since ?? 0) : golden ? 0 : (profile.golden_since ?? 0) + 1;
   const firstMiss = body.firstMiss && typeof body.firstMiss === 'object' ? JSON.stringify(body.firstMiss).slice(0, 300) : null;
+  const detail =
+    kind === 'spar'
+      ? JSON.stringify({
+          moves: String(body.moves ?? '').slice(0, 600),
+          slips: slips.map((x) => ({ ply: int(x.ply, 0, 200), san: String(x.san ?? '').slice(0, 10), grade: String(x.grade ?? '').slice(0, 12), found: !!x.found })),
+        })
+      : null;
   const principle = typeof body.principle === 'string' ? body.principle.slice(0, 20) : null;
 
   const writes = [
     [
       `INSERT INTO attempts (user_id, kind, item_id, chapter, mode, success, misses, alternatives, idea_hints, move_hints, timed, slow_moves,
          surprise, surprise_found, first_miss, principle, duration_ms, user_moves, points, clove_gain, lesson_replay, puzzle_rating,
-         rating_before, rating_after, golden, stars, breakdown, day, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         rating_before, rating_after, golden, stars, punished, detail, breakdown, day, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         user.id,
         kind,
@@ -359,6 +394,8 @@ export async function recordAttempt(store, user, body, opts = {}) {
         rated ? rating.after : null,
         golden ? 1 : 0,
         score.stars,
+        punished,
+        detail,
         JSON.stringify(breakdown),
         day,
         Date.now(),
@@ -402,7 +439,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
 
   const [totals, dayAfter] = await Promise.all([getTotals(store, user.id, day), getDay(store, user.id, day)]);
   const ctx = {
-    attempt: { kind, itemId: item.id, chapter: item.chapter, success, clean: score.clean, timed: run.timed, slowMoves: run.slowMoves, surprise, mode, stars: score.stars, combo: score.clean ? combo + 1 : 0 },
+    attempt: { kind, itemId: item.id, chapter: item.chapter, success, clean: score.clean, timed: run.timed, slowMoves: run.slowMoves, surprise, punished, mode, stars: score.stars, combo: score.clean ? combo + 1 : 0 },
     totals,
     events: { golden, shieldEarned: woven.earned > 0, repaired: !!repaired, graduated: !!school?.events?.graduated },
   };

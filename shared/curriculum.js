@@ -18,7 +18,11 @@
 // * Served between lines (interleaving). A right answer schedules the next
 //   look after 3, 10 and 30 days, then it is mastered; a wrong one brings it
 //   back tomorrow.
+//
+// Sparring rounds (shared/sparring.js): White plays like club players. Two a
+// day, each after three other exercises, and more once the day's work is done.
 import { addDays } from './scoring.js';
+import { sparDue } from './sparring.js';
 
 export const ACTIVE_SIZE = 3;
 export const GRADUATE_DAYS = 3;
@@ -92,12 +96,14 @@ export function atYourLevel(cur, lineId) {
 /**
  * The next School exercise.
  * @param {ReturnType<typeof buildCurriculum>} cur
- * @param {{ reviewsToday?: number, recent?: string[], deckDue?: { id: string }[], deckToday?: number }} opts
+ * @param {{ reviewsToday?: number, recent?: string[], deckDue?: { id: string }[], deckToday?: number, spar?: { available: boolean, today?: number } | null }} opts
  *   recent: exercise ids played this session, oldest first ("deck:<id>" for deck positions)
- * @returns {{ kind: 'line', id: string, mode: 'review'|'learn'|'extra' } | { kind: 'deck', id: string, mode: 'deck' } | null}
+ * @returns {{ kind: 'line', id: string, mode: 'review'|'learn'|'extra' } | { kind: 'deck', id: string, mode: 'deck' } | { kind: 'spar', id: string, mode: 'spar' } | null}
  */
-export function pickNext(cur, { reviewsToday = 0, recent = [], deckDue = [], deckToday = 0 } = {}) {
+export function pickNext(cur, { reviewsToday = 0, recent = [], deckDue = [], deckToday = 0, spar = null } = {}) {
   const last = recent[recent.length - 1];
+  // Sparring against club players' moves: two a day, one after every three other exercises.
+  if (spar && sparDue({ recent, today: spar.today ?? 0, available: !!spar.available })) return { kind: 'spar', id: 'spar', mode: 'spar' };
   const linesSinceDeck = (() => {
     let n = 0;
     for (let i = recent.length - 1; i >= 0 && !recent[i].startsWith('deck:'); i--) n++;
@@ -115,7 +121,9 @@ export function pickNext(cur, { reviewsToday = 0, recent = [], deckDue = [], dec
     return { kind: 'line', id: choices[0].id, mode: 'learn' };
   }
   if (deck && deckToday < DECK_PER_DAY) return { kind: 'deck', id: deck.id, mode: 'deck' };
-  // Everything for today is done: extra practice on what you're learning.
+  // Everything for today is done: extra practice on what you're learning,
+  // with a sparring round in between.
+  if (spar && sparDue({ recent, today: spar.today ?? 0, available: !!spar.available, extra: true })) return { kind: 'spar', id: 'spar', mode: 'spar' };
   const pool = cur.active.length ? cur.active : cur.graduated;
   if (!pool.length) return null;
   const plays = (id) => recent.filter((r) => r === id).length;

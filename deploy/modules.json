@@ -1,0 +1,10 @@
+[
+  {
+    "name": "stockfish-19-lite-single.wasm.bin",
+    "path": "/engine/stockfish-19-lite-single.wasm",
+    "type": "application/octet-stream",
+    "bytes": 1845971,
+    "sha256": "ee4f115bdb2d32cadf96cada104a05b5ec257d7ad6f57582190b49bc71f096de",
+    "base64": "stockfish-19-lite-single.wasm.bin.b64"
+  }
+]

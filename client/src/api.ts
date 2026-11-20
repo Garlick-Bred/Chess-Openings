@@ -67,6 +67,8 @@ export interface Config {
   moveSeconds: number[];
   surpriseRates: number[];
   sharedAccounts: boolean;
+  /** Lichess club-player statistics are available (the server has a Lichess token). */
+  clubStats?: boolean;
 }
 
 export interface World {
@@ -115,6 +117,8 @@ export interface Totals {
   chapterLines: Record<string, number>;
   lineCount: number;
   threeStars: number;
+  sparRounds: number;
+  sparPunished: number;
   path: PathPos;
 }
 
@@ -126,6 +130,8 @@ export interface DayInfo {
   size: number;
   reviews: number;
   deck: number;
+  /** Sparring rounds today. */
+  spar: number;
   runs: number;
   points: number;
   successes: number;

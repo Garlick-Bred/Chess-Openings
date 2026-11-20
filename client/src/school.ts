@@ -3,6 +3,7 @@ import { buildCurriculum, pickNext, deckDue } from '@shared/curriculum.js';
 import { posKey } from '@shared/pgn.js';
 import { DEFAULT_RATING } from '@shared/cloves.js';
 import { localDay, type Me } from './api';
+import { engineSupported } from './engine';
 import type { Course, Deck, Line } from './course';
 
 export function myRating(me: Me): number {
@@ -37,6 +38,11 @@ export function pushRecent(id: string) {
   }
 }
 
+/** Sparring rounds join the School once you've started a line (and the browser can run Stockfish). */
+export function sparAvailable(me: Me): boolean {
+  return engineSupported() && Object.keys(me.progress.lines).length > 0;
+}
+
 /** The next School exercise as a route, or null when nothing is left. */
 export function nextExerciseRoute(me: Me, course: Course, deck: Deck | null | undefined): string | null {
   const cur = curriculumFor(me, course);
@@ -45,9 +51,11 @@ export function nextExerciseRoute(me: Me, course: Course, deck: Deck | null | un
     recent: sessionRecent(),
     deckDue: deckDueFor(me, deck),
     deckToday: me.today.deck,
+    spar: { available: sparAvailable(me), today: me.today.spar ?? 0 },
   });
   if (!next) return null;
   if (next.kind === 'deck') return `/deck/${next.id}?school=1`;
+  if (next.kind === 'spar') return `/spar?school=1`;
   // Learn first, remember later: a line you have never played starts with its lesson.
   if (!me.progress.lines[next.id]) return `/lesson/${next.id}?school=1`;
   return `/line/${next.id}?mode=${next.mode}&school=1`;

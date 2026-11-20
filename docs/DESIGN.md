@@ -12,8 +12,9 @@ when the course is built:
 
 * **Every legal Black move** in every position of every line is evaluated by
   Stockfish 16 (all moves at depth 12, the best three and the repertoire
-  move at depth 16). The site can then judge any move instantly, offline, with
-  no engine in the browser or the Worker.
+  move at depth 16). The site can then judge any move in the course
+  instantly, with no engine running. (Sparring rounds leave the course, so
+  they run Stockfish in the browser: see section 8.)
 * **Refutation lines** (Stockfish's principal variation) are stored for the 25
   most plausible moves in each position and every move the course mentions.
 * **Masters statistics** for every position come from the Lichess masters
@@ -140,7 +141,10 @@ still comes later. "⚡ A line with a surprise" on the Train page forces one.
   * A wrong one brings it back tomorrow.
   * An answer counts if Stockfish rates it within 0.05 winning chances of the
     best move.
-* When everything is done, School serves extra practice.
+* **Sparring rounds** (section 8): one after every three other exercises, two
+  a day.
+* When everything is done, School serves extra practice, with a sparring round
+  after every three.
 
 ## 6. Points and the Garlick Path, cloves, rating
 
@@ -201,3 +205,46 @@ position**. A game that reaches a course position by another move order counts
 * who left first,
 * if it was you, how Stockfish rates your move,
 * and a button to drill the line.
+
+## 8. Sparring rounds (`shared/sparring.js`, `client/src/game/useSparring.ts`)
+
+Lines teach the repertoire; sparring tests it against the moves you'll really
+meet, slips included.
+
+* **White plays like club players.** Each White move is drawn from the
+  Lichess database (players rated 1000–1800, blitz and rapid) in proportion to
+  how often club players chose it in that position. Moves played in under 1%
+  of the games are left out. On move 1, White picks among the first moves the
+  course covers (1.d4, 1.c4, 1.Nf3...). The site shows how common White's
+  move is ("Bf4 is played in 41% of 12,345 club games here").
+* **You play Black.**
+  * In a course position (by position, so transpositions count) the move is
+    judged like a line. The repertoire move is right. Another good move asks
+    you to try again, without counting a miss.
+  * Off the course, Stockfish 19 lite runs in your browser (WebAssembly, about
+    2 MB, served by the site) while you think: the 3 best moves, depth 15 or
+    2.5 seconds. If you play something else, it searches that move too. A move
+    within 0.08 winning chances of the best is fine. Anything worse is graded
+    (inexact, inaccuracy, mistake, blunder) and explained with the same rules
+    as the course (`explain.js`, from the engine's lines).
+  * A miss explains; the second one shows the move.
+* **White's slips.** After every White move, the engine compares the
+  position with the one before. White's move is a slip when it gives away
+  at least 0.12 of White's winning chances and leaves you at least +0.2:
+  * ?! from 0.12, ? from 0.2, ?? from 0.3.
+  * You aren't told. Your first answer counts as punishing it if it's within
+    0.05 of the best move.
+  * Afterwards the move list marks the slip, and the round's summary lists
+    every slip with your answer and the best one.
+* **The round ends** after 12 of your moves, when you're 3.5 pawns up, when
+  fewer than 25 club games reach White's position, or when the game is over.
+* **Points:** like a line of the same length at "Hard" difficulty, +30% for
+  each slip punished (up to 3). A finished round with misses earns 40%, plus
+  the slip bonus. A clean round fills a clove. Rounds beyond the day's two
+  fill half a clove. Rounds don't change the opening rating, because White's
+  moves are different every time.
+* **Badges:** Sparring Partner (finish a round) and Club Crusher (punish 10
+  slips).
+* Without a Lichess token on the server, the masters database stands in.
+  Rounds then end sooner, because masters' games thin out quickly.
+

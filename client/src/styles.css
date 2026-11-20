@@ -2857,6 +2857,7 @@ details[open] > summary.tips-toggle::before {
     flex-direction: column;
   }
   .play .panel > .feedback,
+  .play .panel > .spar-white,
   .play .panel > .surprise-banner,
   .play .panel > .move-timer,
   .play .panel > .hint-box,
@@ -3086,4 +3087,39 @@ details[open] > summary.tips-toggle::before {
   bottom: 8px;
   z-index: 2;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ---- Sparring rounds ---- */
+.spar-white {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--muted);
+}
+.spar-white b {
+  color: var(--text);
+}
+.spar-offbook {
+  display: block;
+  margin-top: 3px;
+  color: #ffd29a;
+}
+.spar-busy {
+  margin-top: 6px;
+}
+.move-cell.g-slip {
+  color: #ffb74d;
+  font-weight: 800;
+}
+.move-cell.g-good,
+.move-cell.g-alternative {
+  color: var(--green-hi);
+}
+.spar-slips ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  text-align: left;
+}
+.spar-slips li {
+  margin: 2px 0;
 }

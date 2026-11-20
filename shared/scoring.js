@@ -12,9 +12,9 @@ export function bulbBonus(streakDays = 0) {
   return 50 + 10 * Math.min(10, Math.max(0, streakDays));
 }
 
-/** Base points: a line is worth more the more moves you have to know. */
+/** Base points: a line (or a sparring round) is worth more the more moves you play. */
 export function basePoints({ kind, blackMoves = 6 }) {
-  if (kind === 'line') return 8 + 2 * blackMoves;
+  if (kind === 'line' || kind === 'spar') return 8 + 2 * blackMoves;
   if (kind === 'punish') return 15;
   return 12; // one of your own mistakes
 }
@@ -33,12 +33,13 @@ export function difficultyFor(rating) {
 /**
  * Thinking time per move for the full speed bonus is half of par or less;
  * at par or slower there is no speed bonus. Lines: par 6 s a move (blitz
- * pace). Positions from your games: par 40 s.
+ * pace). Sparring rounds: 12 s (the moves aren't all known). Positions from
+ * your games: par 40 s.
  */
-export const SPEED_PAR = { line: 6, deck: 40 };
+export const SPEED_PAR = { line: 6, spar: 12, deck: 40 };
 export function speedFactor({ kind, thinkMs, userMoves }) {
   if (!userMoves || thinkMs == null) return 0;
-  const par = kind === 'line' ? SPEED_PAR.line : SPEED_PAR.deck;
+  const par = kind === 'line' ? SPEED_PAR.line : kind === 'spar' ? SPEED_PAR.spar : SPEED_PAR.deck;
   const spm = thinkMs / 1000 / userMoves;
   return Math.max(0, Math.min(1, (par - spm) / (par / 2)));
 }
@@ -54,26 +55,33 @@ export const MAX_COMBO = 5;
  * Clean       = +25% with no misses and no hints
  * Speed       = up to +30%: full at half of par thinking time per move or less
  * Combo       = +10% for each clean run in a row before this one today (max +50%)
- * Punished    = +50% for cashing in on a surprise mistake
+ * Punished    = +50% for cashing in on a surprise mistake; in a sparring
+ *               round +30% for each slip of White's you punished (up to 3)
  * Hints       = -10% per idea hint, -25% per move shown
  * Lesson replay = half (the line was just shown)
  * Stars: 1 finished, 2 clean, 3 clean and fast (speed bonus at least half).
  */
 export function scoreRun(a) {
-  const { kind, blackMoves, rating, success, finished = false, misses = 0, ideaHints = 0, moveHints = 0, thinkMs = null, userMoves = 0, combo = 0, surprise = null, lessonReplay = false } = a;
+  const { kind, blackMoves, rating, success, finished = false, misses = 0, ideaHints = 0, moveHints = 0, thinkMs = null, userMoves = 0, combo = 0, surprise = null, punished = 0, lessonReplay = false } = a;
   const base = basePoints({ kind, blackMoves });
   const diff = difficultyFor(rating);
   const completion = Math.round(base * diff.mult);
   const breakdown = [];
   const speed = speedFactor({ kind, thinkMs, userMoves });
+  const slips = kind === 'spar' ? Math.min(3, Math.max(0, punished)) : 0;
+  const slipPoints = Math.round(completion * 0.3 * slips);
+  const slipRow = { label: `Punished White’s slip${slips > 1 ? `s ×${slips}` : ''}`, points: slipPoints };
   if (!success) {
-    if (kind === 'line' && finished) {
+    if ((kind === 'line' || kind === 'spar') && finished) {
       const p = Math.round(completion * 0.4);
-      return { total: p, base, completion, clean: false, stars: 1, speed, difficulty: diff.name, breakdown: [{ label: `Line finished, with misses · ${diff.name}`, points: p }] };
+      const rows = [{ label: `${kind === 'spar' ? 'Round' : 'Line'} finished, with misses · ${diff.name}`, points: p }];
+      if (slips) rows.push(slipRow);
+      return { total: p + (slips ? slipPoints : 0), base, completion, clean: false, stars: 1, speed, difficulty: diff.name, breakdown: rows };
     }
     return { total: 0, base, completion, clean: false, stars: 0, speed, difficulty: diff.name, breakdown: [{ label: 'Missed', points: 0 }] };
   }
-  breakdown.push({ label: `${kind === 'line' ? `Line completed (${blackMoves} moves)` : 'Solved'} · ${diff.name}`, points: completion });
+  const what = kind === 'line' ? `Line completed (${blackMoves} moves)` : kind === 'spar' ? `Sparring round (${blackMoves} moves)` : 'Solved';
+  breakdown.push({ label: `${what} · ${diff.name}`, points: completion });
   let total = completion;
   const clean = misses === 0 && ideaHints === 0 && moveHints === 0;
   if (clean) {
@@ -96,6 +104,10 @@ export function scoreRun(a) {
     const b = Math.round(completion * 0.5);
     breakdown.push({ label: 'Punished White’s mistake', points: b });
     total += b;
+  }
+  if (slips) {
+    breakdown.push(slipRow);
+    total += slipPoints;
   }
   if (ideaHints) {
     const p = Math.round(completion * 0.1 * ideaHints);

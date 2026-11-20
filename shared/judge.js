@@ -25,6 +25,8 @@ export const GRADE_INFO = {
   mistake: { label: 'Mistake', symbol: '?', tone: 'bad' },
   blunder: { label: 'Blunder', symbol: '??', tone: 'bad' },
   unknown: { label: 'Not in your repertoire', symbol: '·', tone: 'warn' },
+  best: { label: 'Best move', symbol: '!', tone: 'good' },
+  good: { label: 'Good move', symbol: '✓', tone: 'good' },
   found: { label: 'You punished it!', symbol: '!', tone: 'good' },
   partial: { label: 'Better, but not the most', symbol: '!?', tone: 'ok' },
   missed: { label: 'Missed chance', symbol: '?', tone: 'bad' },

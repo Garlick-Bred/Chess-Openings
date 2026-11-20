@@ -16,7 +16,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p client/tsconfig.json --noEmit",
     "deploy": "node scripts/deploy-cloudflare.mjs",
-    "bundle": "node scripts/deploy-cloudflare.mjs --build-only && node -e \"require('fs').mkdirSync('deploy',{recursive:true});require('fs').copyFileSync('.deploy/worker.js','deploy/worker.js')\"",
+    "bundle": "node scripts/deploy-cloudflare.mjs --build-only && node scripts/copy-bundle.mjs",
     "course": "NODE_USE_ENV_PROXY=1 node scripts/build-course.mjs && node scripts/build-index.mjs",
     "course:index": "node scripts/build-index.mjs"
   },

@@ -102,6 +102,55 @@ describe('recording runs', () => {
     expect(t.path.label).toBe(t.points >= 100 ? '1-2' : '1-1');
     expect(t.threeStars).toBe(1);
   });
+  it('sparring rounds: points per slip punished, two full cloves a day, no rating change, their own badges', async () => {
+    const { store, user } = await setupShared();
+    const spar = (over = {}) => ({
+      kind: 'spar',
+      itemId: 'spar',
+      mode: 'spar',
+      chapter: 'london',
+      success: true,
+      misses: 0,
+      blackMoves: 12,
+      userMoves: 12,
+      finished: true,
+      durationMs: 120000,
+      thinkMs: 100000,
+      moves: 'd4 Nf6 Bf4 g6',
+      slips: [{ ply: 8, san: 'Bd3', grade: 'inaccuracy', found: true }, { ply: 14, san: 'h3', grade: 'mistake', found: false }],
+      day: DAY,
+      ...over,
+    });
+    const r1 = await recordAttempt(store, user, spar());
+    expect(r1.cloveGain).toBe(1);
+    expect(r1.rating.rated).toBe(false);
+    expect(r1.rating.after).toBe(r1.rating.before);
+    expect(r1.school).toBeNull();
+    expect(r1.breakdown.map((b) => b.label).join(' | ')).toMatch(/Sparring round \(12 moves\).*Punished White’s slip/);
+    expect(r1.newAchievements.map((a) => a.id)).toEqual(expect.arrayContaining(['spar-1', 'punish-1']));
+    expect(r1.day.spar).toBe(1);
+    expect(r1.day.deck).toBe(0);
+    const r2 = await recordAttempt(store, user, spar());
+    expect(r2.cloveGain).toBe(1);
+    const r3 = await recordAttempt(store, user, spar());
+    expect(r3.cloveGain).toBe(0.5);
+    expect(r3.cloveNote).toMatch(/already sparred 2 rounds/);
+    const t = await getTotals(store, user.id, DAY);
+    expect(t.sparRounds).toBe(3);
+    expect(t.sparPunished).toBe(3);
+    expect(t.punished).toBe(3);
+    const row = await store.get("SELECT chapter, mode, punished, detail FROM attempts WHERE kind = 'spar' LIMIT 1");
+    expect(row).toMatchObject({ chapter: 'london', mode: 'spar', punished: 1 });
+    expect(JSON.parse(row.detail).slips).toHaveLength(2);
+    // Stopped early: nothing earned; finished with misses: 40% plus the slip bonus.
+    expect((await recordAttempt(store, user, spar({ success: false, finished: false, misses: 0, slips: [] }))).points).toBe(0);
+    const miss = await recordAttempt(store, user, spar({ success: false, misses: 2 }));
+    expect(miss.points).toBeGreaterThan(0);
+    expect(miss.cloveGain).toBe(0);
+    // Unknown chapters are dropped.
+    await recordAttempt(store, user, spar({ chapter: 'nonsense' }));
+    expect((await store.get("SELECT chapter FROM attempts WHERE kind = 'spar' ORDER BY id DESC LIMIT 1")).chapter).toBeNull();
+  });
   it('rejects unknown lines', async () => {
     const { store, user } = await setupShared();
     await expect(recordAttempt(store, user, run({ itemId: 'nope' }))).rejects.toThrow(/Unknown line/);

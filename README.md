@@ -48,6 +48,14 @@ sites: log in on either one and you're logged in on the other.
     or "Pawn breaks are your counterplay".
 
   The first miss explains; the second reveals the repertoire move.
+* **Sparring rounds:** White plays the moves real club players play, picked
+  in proportion to how often they play them in the Lichess database (players
+  rated 1000–1800, blitz and rapid). Keep to your repertoire. When White
+  slips, punish it: nobody warns you.
+  * Off the course, Stockfish runs in your browser to judge your moves and
+    spot White's slips.
+  * The summary lists every slip, with your answer and the best one.
+  * Opening School adds two rounds a day.
 * **Surprise mistakes:** in practice runs, White sometimes plays a realistic
   mistake instead of the book move: dropping a centre pawn, leaving e4 or d4
   loose, or forgetting to recapture. You aren't warned; spot it and punish
@@ -75,7 +83,7 @@ sites: log in on either one and you're logged in on the other.
 * From the endgame site:
   * the **daily Garlick bulb**, **streak shields** woven from extra cloves,
     streak **repair** with a double bulb, and **golden cloves**;
-  * **36 badges**, the **family board**, and "keep going or done for today?";
+  * **38 badges**, the **family board**, and "keep going or done for today?";
   * the phone-first layout with a bottom tab bar.
 
 | Lesson | Surprise! | Your games |
@@ -119,9 +127,11 @@ docs/      DESIGN, RESEARCH, ROADMAP, REUSE, the game report, screenshots
     cookie works on every *.garlick.ca site.
 
   Locally, without `AUTH_DB_FILE`, one SQLite file holds everything.
-* No engine or AI runs on the site. Every judgement comes from data built
-  ahead of time: Stockfish 16 (every legal move at depth 12, the main
-  candidates at depth 16), and the Lichess masters database.
+* No AI runs on the site. Course positions are judged from data built ahead
+  of time: Stockfish 16 (every legal move at depth 12, the main candidates at
+  depth 16), and the Lichess masters database. Only sparring rounds, which
+  leave the course, run an engine: Stockfish 19 lite (WebAssembly,
+  single-threaded) in your browser, served from `/engine/`.
 
 ## Run it locally
 
@@ -134,6 +144,7 @@ npm start            # app + API on http://localhost:8787
 npm run dev          # hot reload on http://localhost:5173
 npm test             # unit + API tests (vitest)
 node scripts/e2e-openings.cjs /tmp/shots http://localhost:8787   # Playwright walkthrough
+E2E_SLIP_AT=5 node scripts/e2e-spar.cjs /tmp/shots              # a sparring round, with a forced White slip
 ```
 
 | Variable | Default | Purpose |
@@ -144,7 +155,7 @@ node scripts/e2e-openings.cjs /tmp/shots http://localhost:8787   # Playwright wa
 | `INVITE_CODE` | *(empty)* | If set, new accounts need this code |
 | `COOKIE_DOMAIN` | *(empty)* | e.g. `garlick.ca`: share the sign-in with the other Garlick sites |
 | `EXPLORER_URL` | Lichess masters | Alternative opening explorer endpoint |
-| `LICHESS_TOKEN` | *(empty)* | A Lichess personal token (no scopes): unlocks club-player statistics in lessons. On Cloudflare it's a Worker secret |
+| `LICHESS_TOKEN` | *(empty)* | A Lichess personal token (no scopes): unlocks club-player statistics in lessons and sparring rounds (without it, sparring uses the masters database). On Cloudflare it's a Worker secret |
 
 Behind an HTTPS proxy, start Node with `NODE_USE_ENV_PROXY=1` so the
 explorer and chess.com requests go through it.
@@ -173,7 +184,9 @@ real opponents made.
 
 As for the endgame site: `npm run bundle` writes `deploy/worker.js`. Commit
 and push it, and the Cloudflare connector fetches it from this public repo at
-the exact commit, checks its SHA-256 and uploads it. The upload carries two
+the exact commit, checks its SHA-256 and uploads it. The Stockfish
+WebAssembly file is uploaded next to it as a data module (from
+`deploy/*.b64`, listed in `deploy/modules.json`). The upload carries two
 D1 bindings (`DB` = `garlick-openings`, `AUTH_DB` = `garlick-endgames`) and
 the custom domain `openings.garlick.ca`. Details are in
 [deploy/README.md](deploy/README.md). With an API token,
@@ -183,5 +196,9 @@ the custom domain `openings.garlick.ca`. Details are in
 
 * Chess pieces: "cburnett" by Colin M.L. Burnett (BSD option), via Wikimedia Commons.
 * Master statistics: the [Lichess](https://lichess.org) opening explorer.
-* Evaluations: [Stockfish](https://stockfishchess.org) 16 (GPLv3), run at build time only.
+* Evaluations: [Stockfish](https://stockfishchess.org) 16 (GPLv3) at build
+  time. In sparring rounds, Stockfish 19 lite (GPLv3), the unmodified build
+  from the [stockfish.js](https://github.com/nmrugg/stockfish.js) npm package
+  (where its source is). It's served from `/engine/` with its licence
+  (`/engine/COPYING.txt`).
 * Move legality: [chess.js](https://github.com/jhlywa/chess.js).

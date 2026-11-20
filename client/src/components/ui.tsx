@@ -5,15 +5,12 @@ import type { LineProgress } from '../api';
 
 /** What finishing this exercise is worth today, e.g. "Your level · 1 clove". */
 export function CloveChip({ mode, atLevel, lessonReplay = false }: { mode: string; atLevel: boolean; lessonReplay?: boolean }) {
-  let label: string;
-  let fit = 'core';
-  if (lessonReplay) label = 'After the lesson · 1 clove';
-  else if (mode === 'deck') label = 'From your games · 1 clove';
-  else if (atLevel && (mode === 'learn' || mode === 'review')) label = mode === 'review' ? 'Check-up · 1 clove' : 'Today’s test · 1 clove';
-  else {
-    label = 'Practice · ½ clove';
-    fit = 'easy';
-  }
+  let label = 'Practice · ½ clove';
+  let fit = 'easy';
+  if (lessonReplay) [label, fit] = ['After the lesson · 1 clove', 'core'];
+  else if (mode === 'deck') [label, fit] = ['From your games · 1 clove', 'core'];
+  else if (mode === 'spar') [label, fit] = atLevel ? ['Sparring · 1 clove', 'core'] : ['Extra sparring · ½ clove', 'easy'];
+  else if (atLevel && (mode === 'learn' || mode === 'review')) [label, fit] = [mode === 'review' ? 'Check-up · 1 clove' : 'Today’s test · 1 clove', 'core'];
   return (
     <span className={`clove-chip fit-${fit}`} title="Clove value when you finish without a miss (halved if the move is shown)">
       <GarlickBulb filled={5} size={12} celebrate={false} />

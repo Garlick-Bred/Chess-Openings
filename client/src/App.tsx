@@ -17,6 +17,7 @@ import LeaderboardPage from './pages/Leaderboard';
 import SettingsPage from './pages/Settings';
 import DayDonePage from './pages/DayDone';
 import PathPage from './pages/Path';
+import SparPage from './pages/Spar';
 
 interface AppCtx {
   me: Me;
@@ -180,6 +181,9 @@ export default function App() {
       break;
     case 'games':
       page = <GamesPage />;
+      break;
+    case 'spar':
+      page = <SparPage key={window.location.hash} />;
       break;
     case 'done':
       page = <DayDonePage />;

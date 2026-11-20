@@ -48,7 +48,8 @@ export default function DayDonePage() {
   const course = useCourse();
   const byDrill = new Map<string, number>();
   for (const r of solved) {
-    const name = r.kind === 'line' ? course?.lineById[r.itemId]?.name ?? r.itemId : r.kind === 'punish' ? 'Punish (your games)' : 'Your mistakes';
+    const name =
+      r.kind === 'line' ? course?.lineById[r.itemId]?.name ?? r.itemId : r.kind === 'spar' ? '🥊 Sparring round' : r.kind === 'punish' ? 'Punish (your games)' : 'Your mistakes';
     byDrill.set(name, (byDrill.get(name) ?? 0) + 1);
   }
   const full = me.today.bulbDone;

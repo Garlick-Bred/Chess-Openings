@@ -86,6 +86,8 @@ export const SCHEMA = [
     rating_after  REAL,
     golden        INTEGER NOT NULL DEFAULT 0,
     stars         INTEGER NOT NULL DEFAULT 0,
+    punished      INTEGER NOT NULL DEFAULT 0,
+    detail        TEXT,
     breakdown     TEXT NOT NULL DEFAULT '[]',
     day           TEXT NOT NULL,
     created_at    INTEGER NOT NULL
@@ -143,12 +145,15 @@ export const SCHEMA = [
 ];
 
 /** Bump when SCHEMA or ADDED_COLUMNS change, so existing databases migrate. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Columns added after the first release: [table, column, type]. */
 export const ADDED_COLUMNS = [
   // v2: stars per exercise (the Garlick Path rework)
   ['attempts', 'stars', 'INTEGER NOT NULL DEFAULT 0'],
+  // v3: sparring rounds (White's slips you punished, and the round's moves)
+  ['attempts', 'punished', 'INTEGER NOT NULL DEFAULT 0'],
+  ['attempts', 'detail', 'TEXT'],
 ];
 
 /** One-off data changes, run once when a database moves past that version. */

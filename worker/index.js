@@ -4,7 +4,7 @@
 // (Wrangler "assets"), that is used.
 import { createApi } from '../server/api.js';
 import { createD1Store } from './store-d1.js';
-import { ASSETS } from './assets.generated.js';
+import { ASSETS, BINARY } from './assets.generated.js';
 
 let handle = null;
 const SECURITY_HEADERS = {
@@ -15,9 +15,16 @@ const SECURITY_HEADERS = {
 
 function serveEmbedded(request) {
   const { pathname } = new URL(request.url);
+  // Binary files (the Stockfish engine) are uploaded as separate data modules.
+  const bin = BINARY?.[pathname];
+  if (bin) {
+    return new Response(bin.body, {
+      headers: { 'Content-Type': bin.type, 'Cache-Control': 'public, max-age=31536000, immutable', ...SECURITY_HEADERS },
+    });
+  }
   const asset = ASSETS[pathname] ?? ASSETS['/index.html'];
   if (!asset) return new Response('Not found', { status: 404 });
-  const immutable = pathname.startsWith('/assets/') && ASSETS[pathname];
+  const immutable = (pathname.startsWith('/assets/') || pathname.startsWith('/engine/')) && ASSETS[pathname];
   return new Response(asset.body, {
     headers: {
       'Content-Type': asset.type,

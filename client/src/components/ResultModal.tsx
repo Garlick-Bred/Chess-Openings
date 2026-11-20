@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AttemptResult } from '../api';
 import { sfx } from '../sound';
 import GarlickBulb from './GarlickBulb';
@@ -38,7 +38,7 @@ function BraidNote({ result, bulbFull }: { result: AttemptResult; bulbFull: bool
 }
 
 /** Opening rating change and Opening School progress for this exercise. */
-function RatingAndSchool({ result, lineName }: { result: AttemptResult; lineName: string | null }) {
+function RatingAndSchool({ result, lineName, unratedNote }: { result: AttemptResult; lineName: string | null; unratedNote: string }) {
   const r = result.rating;
   const sc = result.school;
   const ev = sc?.events ?? {};
@@ -92,7 +92,7 @@ function RatingAndSchool({ result, lineName }: { result: AttemptResult; lineName
               <small className="muted"> · exercise rated {r.puzzle}</small>
             </>
           ) : (
-            <span className="muted">Replays right after a lesson don’t change your opening rating.</span>
+            <span className="muted">{unratedNote}</span>
           )}
         </div>
       )}
@@ -176,6 +176,10 @@ interface Props {
   surprise: { grade: string; found: boolean; san: string } | null;
   /** The plan question at the end of a line, answered. */
   plan?: { right: boolean; answer: string; why: string } | null;
+  /** More about the exercise, under the title (e.g. a sparring round's slips). */
+  extra?: ReactNode;
+  /** Why the opening rating didn't change. */
+  unratedNote?: string;
   nextLabel: string;
   retryLabel?: string;
   onNext: () => void;
@@ -186,7 +190,18 @@ interface Props {
   onDone: () => void;
 }
 
-export default function ResultModal({ title, outcome, result, submitError, prevCloves, lineName, surprise, plan = null, nextLabel, retryLabel = 'Try again', onNext, onRetry, onLesson, onReview, onBack, onDone }: Props) {
+export default function ResultModal({
+  title,
+  outcome,
+  result,
+  submitError,
+  prevCloves,
+  lineName,
+  surprise,
+  plan = null,
+  extra = null,
+  unratedNote = 'Replays right after a lesson don’t change your opening rating.',
+  nextLabel, retryLabel = 'Try again', onNext, onRetry, onLesson, onReview, onBack, onDone }: Props) {
   const ok = outcome.success;
   // The exercise that fills the 5th clove asks whether to keep going or stop for the day.
   const askDone = !!result?.day.bulbCompletedNow;
@@ -226,6 +241,7 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
               {surprise.found ? '⚡ White went off script and you punished it.' : '⚡ White went off script with a mistake. Spotting those is a habit: check captures and threats after every unexpected move.'}
             </div>
           )}
+          {extra}
         </div>
 
         {ok && (
@@ -303,7 +319,7 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
         {!result && !submitError && <div className="muted small center">Saving…</div>}
         {submitError && <div className="form-error">{submitError}</div>}
 
-        {result && <RatingAndSchool result={result} lineName={lineName} />}
+        {result && <RatingAndSchool result={result} lineName={lineName} unratedNote={unratedNote} />}
 
         {result && result.newAchievements.length > 0 && (
           <div className="new-achievements">

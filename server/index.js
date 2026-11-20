@@ -23,6 +23,8 @@ const TYPES = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
+  '.wasm': 'application/wasm',
+  '.txt': 'text/plain; charset=utf-8',
 };
 const FORWARD_HEADERS = ['cookie', 'content-type', 'content-length', 'accept', 'user-agent'];
 
@@ -44,7 +46,8 @@ function serveStatic(req, res) {
     res.end('Client not built. Run: npm run build');
     return;
   }
-  const immutable = file.includes(`${path.sep}assets${path.sep}`);
+  // Hashed build files, and the engine (its file names carry the version).
+  const immutable = file.includes(`${path.sep}assets${path.sep}`) || file.includes(`${path.sep}engine${path.sep}`);
   res.writeHead(200, {
     'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream',
     'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',

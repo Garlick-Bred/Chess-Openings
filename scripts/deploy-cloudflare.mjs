@@ -10,8 +10,13 @@
 //   AUTH_D1_NAME=garlick-endgames   the database with the shared accounts
 //   node scripts/deploy-cloudflare.mjs [--skip-build] [--build-only]
 //
+// Text files are embedded in worker.js. Binary files (the Stockfish engine,
+// .wasm) are uploaded next to it as data modules: .deploy/<name>.bin, imported
+// by the generated assets module and served with their own content type.
+//
 // Behind an HTTPS proxy on Node >= 22.21, run with NODE_USE_ENV_PROXY=1.
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +41,7 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json',
   '.txt': 'text/plain; charset=utf-8',
 };
+const BINARY_TYPES = { '.wasm': 'application/wasm' };
 
 const BUILD_ONLY = process.argv.includes('--build-only');
 if (!TOKEN && !BUILD_ONLY) {
@@ -72,20 +78,35 @@ if (!process.argv.includes('--skip-build')) {
 step('Bundling Worker with embedded client');
 fs.mkdirSync(OUT, { recursive: true });
 const assets = {};
+/** Binary files: published path -> { type, module (data module name), full (source file) } */
+const binaries = {};
 (function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full);
     else {
       const rel = '/' + path.relative(DIST, full).split(path.sep).join('/');
-      const type = TYPES[path.extname(entry.name)];
+      const ext = path.extname(entry.name);
+      if (BINARY_TYPES[ext]) {
+        binaries[rel] = { type: BINARY_TYPES[ext], module: `${entry.name}.bin`, full };
+        continue;
+      }
+      const type = TYPES[ext];
       if (!type) throw new Error(`No content type for ${rel}; add it to TYPES.`);
       assets[rel] = { type, body: fs.readFileSync(full, 'utf8') };
     }
   }
 })(DIST);
+for (const f of fs.readdirSync(OUT)) if (f.endsWith('.bin')) fs.rmSync(path.join(OUT, f));
+const binEntries = Object.entries(binaries);
+for (const [, b] of binEntries) fs.copyFileSync(b.full, path.join(OUT, b.module));
 const generated = path.join(OUT, 'assets.generated.js');
-fs.writeFileSync(generated, `export const ASSETS = ${JSON.stringify(assets)};\n`);
+fs.writeFileSync(
+  generated,
+  binEntries.map(([, b], i) => `import bin${i} from './${b.module}';\n`).join('') +
+    `export const ASSETS = ${JSON.stringify(assets)};\n` +
+    `export const BINARY = {${binEntries.map(([rel, b], i) => `${JSON.stringify(rel)}: { type: ${JSON.stringify(b.type)}, body: bin${i} }`).join(', ')}};\n`,
+);
 await build({
   entryPoints: [path.join(ROOT, 'worker', 'index.js')],
   bundle: true,
@@ -101,12 +122,28 @@ await build({
       name: 'embedded-assets',
       setup(b) {
         b.onResolve({ filter: /assets\.generated\.js$/ }, () => ({ path: generated }));
+        // Data modules stay separate files in the upload.
+        b.onResolve({ filter: /\.bin$/ }, (args) => ({ path: args.path, external: true }));
       },
     },
   ],
 });
 const script = fs.readFileSync(path.join(OUT, 'worker.js'), 'utf8');
 console.log(`  ${Object.keys(assets).length} files embedded, worker.js ${(script.length / 1024).toFixed(0)} KB`);
+for (const [rel, b] of binEntries) console.log(`  ${rel} -> data module ${b.module} (${(fs.statSync(b.full).size / 1024).toFixed(0)} KB)`);
+// For connector deploys (no API token here): the modules list, with base64 copies of the binaries.
+fs.writeFileSync(
+  path.join(OUT, 'modules.json'),
+  JSON.stringify(
+    binEntries.map(([rel, b]) => {
+      const bytes = fs.readFileSync(b.full);
+      fs.writeFileSync(path.join(OUT, `${b.module}.b64`), bytes.toString('base64'));
+      return { name: b.module, path: rel, type: 'application/octet-stream', bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex'), base64: `${b.module}.b64` };
+    }),
+    null,
+    2,
+  ) + '\n',
+);
 if (BUILD_ONLY) {
   console.log(`  built ${path.join(OUT, 'worker.js')} (--build-only: not deploying)`);
   process.exit(0);
@@ -141,6 +178,7 @@ metadata.keep_bindings = [...(process.env.INVITE_CODE ? [] : ['secret_text']), .
 const form = new FormData();
 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
 form.append('worker.js', new Blob([script], { type: 'application/javascript+module' }), 'worker.js');
+for (const [, b] of binEntries) form.append(b.module, new Blob([fs.readFileSync(b.full)], { type: 'application/octet-stream' }), b.module);
 await cf('PUT', `/accounts/${accountId}/workers/scripts/${NAME}`, form);
 console.log('  uploaded');
 
