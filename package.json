@@ -1,0 +1,37 @@
+{
+  "name": "garlick-openings",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Openings trainer for the family: a King's Indian repertoire with spaced repetition, surprise mistakes to punish, explanations by principle, chess.com game analysis and the daily Garlick bulb. Runs on Node or Cloudflare Workers + D1.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "vite --config client/vite.config.ts",
+    "build": "vite build --config client/vite.config.ts",
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p client/tsconfig.json --noEmit",
+    "deploy": "node scripts/deploy-cloudflare.mjs",
+    "bundle": "node scripts/deploy-cloudflare.mjs --build-only && node -e \"require('fs').mkdirSync('deploy',{recursive:true});require('fs').copyFileSync('.deploy/worker.js','deploy/worker.js')\"",
+    "course": "NODE_USE_ENV_PROXY=1 node scripts/build-course.mjs && node scripts/build-index.mjs",
+    "course:index": "node scripts/build-index.mjs"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8",
+    "esbuild": "^0.25.0"
+  }
+}

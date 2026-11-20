@@ -1,0 +1,183 @@
+{
+ "user": "ham_sandmitch",
+ "games": 269,
+ "score": 0.515,
+ "firstMistakeMedian": 11,
+ "mistakeBy10": 0.327,
+ "mistakeBy20": 0.792,
+ "opponentLeftFirst": 0.703,
+ "systems": [
+  {
+   "name": "London (Bf4)",
+   "chapter": "london",
+   "games": 50,
+   "score": 0.54,
+   "mistakeBy10": 0.24,
+   "medianFirstMistake": 12,
+   "evalAfter10": -0.12
+  },
+  {
+   "name": "Colle / e3 systems",
+   "chapter": "colle",
+   "games": 35,
+   "score": 0.371,
+   "mistakeBy10": 0.286,
+   "medianFirstMistake": 11,
+   "evalAfter10": -0.12
+  },
+  {
+   "name": "KID: c4 without e4",
+   "chapter": "c4quiet",
+   "games": 34,
+   "score": 0.603,
+   "mistakeBy10": 0.324,
+   "medianFirstMistake": 11,
+   "evalAfter10": 0.06
+  },
+  {
+   "name": "KID main: Classical (Nf3)",
+   "chapter": "mainline",
+   "games": 21,
+   "score": 0.452,
+   "mistakeBy10": 0.19,
+   "medianFirstMistake": 12,
+   "evalAfter10": -0.52
+  },
+  {
+   "name": "Jobava / Barry (Nc3+Bf4)",
+   "chapter": "jobava",
+   "games": 21,
+   "score": 0.476,
+   "mistakeBy10": 0.571,
+   "medianFirstMistake": 9,
+   "evalAfter10": -0.62
+  },
+  {
+   "name": "1.e3 systems",
+   "chapter": "flank",
+   "games": 16,
+   "score": 0.438,
+   "mistakeBy10": 0.438,
+   "medianFirstMistake": 9,
+   "evalAfter10": 0.03
+  },
+  {
+   "name": "Reti / KIA (1.Nf3)",
+   "chapter": "flank",
+   "games": 13,
+   "score": 0.692,
+   "mistakeBy10": 0.385,
+   "medianFirstMistake": 10,
+   "evalAfter10": 0.46
+  },
+  {
+   "name": "English (1.c4)",
+   "chapter": "flank",
+   "games": 12,
+   "score": 0.708,
+   "mistakeBy10": 0.167,
+   "medianFirstMistake": 14,
+   "evalAfter10": -0.64
+  },
+  {
+   "name": "e4+Nc3 (Pirc/150 style)",
+   "chapter": "jobava",
+   "games": 12,
+   "score": 0.667,
+   "mistakeBy10": 0.25,
+   "medianFirstMistake": 12,
+   "evalAfter10": -0.75
+  },
+  {
+   "name": "Other",
+   "chapter": "flank",
+   "games": 11,
+   "score": 0.545,
+   "mistakeBy10": 0.455,
+   "medianFirstMistake": 11,
+   "evalAfter10": 1.24
+  },
+  {
+   "name": "Fianchetto without c4",
+   "chapter": "flank",
+   "games": 10,
+   "score": 0.45,
+   "mistakeBy10": 0.3,
+   "medianFirstMistake": 13,
+   "evalAfter10": -0.27
+  },
+  {
+   "name": "Torre (Nf3+Bg5)",
+   "chapter": "bg5",
+   "games": 9,
+   "score": 0.556,
+   "mistakeBy10": 0.667,
+   "medianFirstMistake": 10,
+   "evalAfter10": -0.79
+  },
+  {
+   "name": "Nimzo-Larsen (1.b3)",
+   "chapter": "flank",
+   "games": 9,
+   "score": 0.5,
+   "mistakeBy10": 0.333,
+   "medianFirstMistake": 12,
+   "evalAfter10": 0.42
+  },
+  {
+   "name": "Trompowsky (2.Bg5)",
+   "chapter": "bg5",
+   "games": 5,
+   "score": 0.8,
+   "mistakeBy10": 0.4,
+   "medianFirstMistake": 10,
+   "evalAfter10": 0.36
+  },
+  {
+   "name": "KID: Fianchetto (c4+g3)",
+   "chapter": "c4quiet",
+   "games": 5,
+   "score": 0.2,
+   "mistakeBy10": 0.0,
+   "medianFirstMistake": 13,
+   "evalAfter10": -0.36
+  },
+  {
+   "name": "KID main: other c4+e4",
+   "chapter": "mainline",
+   "games": 2,
+   "score": 0.5,
+   "mistakeBy10": 1.0,
+   "medianFirstMistake": 10,
+   "evalAfter10": -2.82
+  },
+  {
+   "name": "KID main: Four Pawns (f4)",
+   "chapter": "mainline",
+   "games": 2,
+   "score": 0.0,
+   "mistakeBy10": 0.5,
+   "medianFirstMistake": 11,
+   "evalAfter10": 0.32
+  },
+  {
+   "name": "KID main: Samisch (f3)",
+   "chapter": "mainline",
+   "games": 1,
+   "score": 0.0,
+   "mistakeBy10": 0.0,
+   "medianFirstMistake": null,
+   "evalAfter10": 1.86
+  },
+  {
+   "name": "KID main: Averbakh (Be2+Bg5)",
+   "chapter": "mainline",
+   "games": 1,
+   "score": 0.0,
+   "mistakeBy10": 0.0,
+   "medianFirstMistake": 17,
+   "evalAfter10": -1.16
+  }
+ ],
+ "generated": 1794901901
+}
