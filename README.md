@@ -55,7 +55,8 @@ sites: log in on either one and you're logged in on the other.
   * Off the course, Stockfish runs in your browser to judge your moves and
     spot White's slips.
   * The summary lists every slip, with your answer and the best one.
-  * Opening School adds two rounds a day.
+  * Opening School adds two rounds a day, and the home page has a "Spar a
+    round" button.
 * **Surprise mistakes:** in practice runs, White sometimes plays a realistic
   mistake instead of the book move: dropping a centre pawn, leaving e4 or d4
   loose, or forgetting to recapture. You aren't warned; spot it and punish

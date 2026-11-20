@@ -3123,3 +3123,17 @@ details[open] > summary.tips-toggle::before {
 .spar-slips li {
   margin: 2px 0;
 }
+
+.home .spar-btn {
+  border-color: rgba(255, 183, 77, 0.55);
+}
+@media (max-width: 720px) {
+  .rating-card > .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .rating-card > .row > p {
+    max-width: none !important;
+  }
+}

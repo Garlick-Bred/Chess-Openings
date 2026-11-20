@@ -8,6 +8,7 @@ import GarlickBulb from '../components/GarlickBulb';
 import { useCourse, useDeck } from '../course';
 import { curriculumFor, deckDueFor, myRating, nextExerciseRoute } from '../school';
 import { pct } from '../components/ui';
+import { SPAR } from '@shared/sparring.js';
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -66,6 +67,8 @@ export default function HomePage() {
     if (!course) return;
     go(nextExerciseRoute(me, course, deck) ?? '/train');
   };
+  const spar = () => go(`/spar?r=${Date.now()}`);
+  const sparToday = me.today.spar ?? 0;
   const ins = insights as any;
   const mine = me.user.settings.chesscom?.toLowerCase() === ins.user;
 
@@ -99,7 +102,7 @@ export default function HomePage() {
             </p>
           ) : (
             <p className="muted">
-              Each line you play from memory, each check-up and each position from your games fills a clove. Fill all five for <b>+{bulbBonus(me.totals.streak)}</b> bonus points
+              Each line you play from memory, each check-up, each sparring round and each position from your games fills a clove. Fill all five for <b>+{bulbBonus(me.totals.streak)}</b> bonus points
               {me.totals.streak > 0 ? (
                 <>
                   {' '}
@@ -119,11 +122,17 @@ export default function HomePage() {
                 <button className="btn ghost" onClick={train}>
                   Train anyway ▸
                 </button>
+                <button className="btn ghost" onClick={spar}>
+                  🥊 Spar a round
+                </button>
               </>
             ) : (
               <>
                 <button className="btn primary big" onClick={train} disabled={!course}>
                   🎯 Start training
+                </button>
+                <button className="btn big spar-btn" onClick={spar} disabled={!course} title="White plays like club players: punish the slips">
+                  🥊 Spar a round
                 </button>
                 <button className="btn big" onClick={() => go('/lines')}>
                   📖 My repertoire
@@ -163,6 +172,18 @@ export default function HomePage() {
               <span className="grow">
                 <b>{plural(cur.todo.length, 'line')}</b> to play from memory today
                 {cur.todo.length ? `: ${cur.todo.map((i) => i.line.name.split(':')[0]).slice(0, 3).join(' · ')}` : ' (done ✓)'}
+              </span>
+            </li>
+            <li>
+              <span className="plan-ico">🥊</span>
+              <span className="grow">
+                <b>
+                  {Math.min(sparToday, SPAR.PER_DAY)} of {SPAR.PER_DAY} sparring rounds
+                </b>
+                {sparToday >= SPAR.PER_DAY ? ' done ✓' : ''}: White plays like club players, and you punish the slips.{' '}
+                <a href="#/spar" onClick={(e) => (e.preventDefault(), spar())}>
+                  Spar now ▸
+                </a>
               </span>
             </li>
             {deck && (
