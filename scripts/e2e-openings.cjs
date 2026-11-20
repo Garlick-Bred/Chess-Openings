@@ -87,7 +87,10 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
-  page.on('console', (m) => m.type() === 'error' && !/status of 401/.test(m.text()) && problems.push(`console: ${m.text()}`));
+  // 401 = the login check before signing in; net:: errors are reported below
+  // per URL, so third-party scripts (Cloudflare's analytics beacon) don't count.
+  page.on('console', (m) => m.type() === 'error' && !/status of 401|Failed to load resource: net::/.test(m.text()) && problems.push(`console: ${m.text()}`));
+  page.on('requestfailed', (r) => r.url().startsWith(BASE) && !/ERR_ABORTED/.test(r.failure()?.errorText ?? '') && problems.push(`request failed: ${r.url()}`));
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 
   // Register
@@ -95,7 +98,7 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
   await page.waitForSelector('.auth-card');
   await shot(page, 'login');
   await page.click('button:has-text("New account")');
-  const user = `e2e${Date.now() % 100000}`;
+  const user = process.env.E2E_USER || `e2e${Date.now() % 100000}`;
   await page.fill('input[autocomplete=username]', user);
   await page.fill('input[placeholder="What the family sees"]', 'Mitch');
   await page.fill('input[type=password]', 'e2e-password');
