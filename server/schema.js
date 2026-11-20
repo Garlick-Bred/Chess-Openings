@@ -28,6 +28,14 @@ export const USERS_TABLE = `CREATE TABLE IF NOT EXISTS users (
   created_at    INTEGER NOT NULL
 )`;
 
+/** The endgame site's sessions table (shared sign-in). Created here only without a separate account database. */
+export const SESSIONS_TABLE = `CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+)`;
+
 export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS profiles (
     user_id      INTEGER PRIMARY KEY,

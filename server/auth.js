@@ -2,13 +2,14 @@
 // in Cloudflare Workers), random session tokens in an HttpOnly cookie, and a
 // brute-force lockout stored in the database.
 //
-// Same scheme as the endgame site, so a family member's existing password
-// works here: users are read from the shared account database (authStore),
-// while sessions and the lockout live in this site's own database (store).
+// Same scheme as the endgame site, and one sign-in for both: users *and*
+// sessions live in the shared account database (the endgame site's), and the
+// session cookie is shared across *.garlick.ca (COOKIE_DOMAIN=garlick.ca).
+// The login lockout stays in this site's own database.
 const SESSION_DAYS = 60;
 // Cloudflare Workers allow at most 100,000 PBKDF2 iterations.
 const ITERATIONS = 100_000;
-export const COOKIE = 'go_session';
+export const COOKIE = 'garlick_session';
 export const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
 
 const enc = new TextEncoder();
@@ -48,11 +49,10 @@ export async function createSession(store, userId) {
   return token;
 }
 
-export async function sessionUser(store, authStore, token) {
+/** The signed-in user, from the shared account database (sessions and users). */
+export async function sessionUser(authStore, token) {
   if (!token) return null;
-  const s = await store.get('SELECT user_id FROM sessions WHERE token = ? AND expires_at > ?', token, Date.now());
-  if (!s) return null;
-  return authStore.get('SELECT * FROM users WHERE id = ?', s.user_id);
+  return authStore.get('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?', token, Date.now());
 }
 
 export async function destroySession(store, token) {
@@ -68,14 +68,26 @@ export function parseCookies(header) {
   return out;
 }
 
-export function sessionCookie(token, { secure }) {
+/**
+ * The cookie domain for this request: the configured shared domain when the
+ * site is served under it, or null (host-only) elsewhere (workers.dev, localhost).
+ */
+export function cookieDomain(host, configured) {
+  const d = String(configured ?? '').replace(/^\./, '').toLowerCase();
+  const h = String(host ?? '').toLowerCase();
+  if (!d) return null;
+  return h === d || h.endsWith(`.${d}`) ? d : null;
+}
+
+export function sessionCookie(token, { secure, domain = null }) {
   const attrs = [`${COOKIE}=${token}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${SESSION_DAYS * 86400}`];
+  if (domain) attrs.push(`Domain=${domain}`);
   if (secure) attrs.push('Secure');
   return attrs.join('; ');
 }
 
-export function clearCookie({ secure }) {
-  return `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? '; Secure' : ''}`;
+export function clearCookie({ secure, domain = null, name = COOKIE }) {
+  return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${domain ? `; Domain=${domain}` : ''}${secure ? '; Secure' : ''}`;
 }
 
 // 8 failed logins for a username lock it for 5 minutes.

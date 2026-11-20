@@ -45,7 +45,13 @@ export default {
       return createApi({
         store,
         authStore: env.AUTH_DB ? createD1Store(env.AUTH_DB) : store,
-        env: { INVITE_CODE: env.INVITE_CODE ?? '', EXPLORER_URL: env.EXPLORER_URL, LICHESS_TOKEN: env.LICHESS_TOKEN ?? '' },
+        env: {
+          INVITE_CODE: env.INVITE_CODE ?? '',
+          EXPLORER_URL: env.EXPLORER_URL,
+          // Any capitalisation of LICHESS_TOKEN (the dashboard secret may be "Lichess_token").
+          LICHESS_TOKEN: Object.entries(env).find(([k, v]) => /^lichess_?token$/i.test(k) && typeof v === 'string')?.[1] ?? '',
+          COOKIE_DOMAIN: env.COOKIE_DOMAIN ?? '',
+        },
       });
     })();
     const api = await handle(request, ctx);

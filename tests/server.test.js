@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createNodeStore } from '../server/store-node.js';
-import { ensureSchema, USERS_TABLE } from '../server/schema.js';
+import { ensureSchema, USERS_TABLE, SESSIONS_TABLE } from '../server/schema.js';
 import { recordAttempt, getTotals, getProgress, getLeaderboard, ensureProfile } from '../server/game.js';
-import { hashPassword } from '../server/auth.js';
+import { hashPassword, createSession } from '../server/auth.js';
 import { createApi } from '../server/api.js';
 import { LINES, DECKS } from '../shared/course-index.js';
 
@@ -13,6 +13,7 @@ const LINE = LINES[0];
 async function setupShared() {
   const authStore = createNodeStore(':memory:');
   await authStore.run(USERS_TABLE);
+  await authStore.run(SESSIONS_TABLE);
   const store = createNodeStore(':memory:');
   await ensureSchema(store);
   const r = await authStore.run(
@@ -119,13 +120,30 @@ describe('HTTP API with shared accounts', () => {
     const res = await api(post('/api/auth/login', { username: 'mitch', password: 'correct horse' }));
     expect(res.status).toBe(200);
     const cookie = res.headers.get('set-cookie').split(';')[0];
-    expect(cookie).toMatch(/^go_session=/);
+    expect(cookie).toMatch(/^garlick_session=/);
     const me = await (await api(req('/api/me?day=' + DAY, { headers: { cookie } }))).json();
     expect(me.user.displayName).toBe('Mitch');
     expect(me.user.openingRating).toBe(1250);
-    // Sessions live in this site's database, not the shared one.
-    expect((await store.get('SELECT COUNT(*) n FROM sessions')).n).toBe(1);
-    expect(await authStore.get("SELECT name FROM sqlite_master WHERE name = 'sessions'")).toBeNull();
+    // One sign-in: sessions live in the shared account database.
+    expect((await authStore.get('SELECT COUNT(*) n FROM sessions')).n).toBe(1);
+    expect((await store.get('SELECT COUNT(*) n FROM sessions')).n).toBe(0);
+  });
+
+  it('one sign-in: a session started on the endgame site works here, and logging out ends it everywhere', async () => {
+    const { store, authStore, user } = await setupShared();
+    const api = createApi({ store, authStore, env: { COOKIE_DOMAIN: 'garlick.ca' } });
+    const token = await createSession(authStore, user.id); // as if signed in on endgames.garlick.ca
+    const get = (path, cookie) => api(new Request(`https://openings.garlick.ca${path}`, { headers: { cookie } }));
+    const me = await (await get('/api/me?day=' + DAY, `garlick_session=${token}`)).json();
+    expect(me.user.displayName).toBe('Mitch');
+    const login = await api(new Request('https://openings.garlick.ca/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'mitch', password: 'correct horse' }) }));
+    expect(login.headers.getSetCookie()[0]).toMatch(/^garlick_session=.+; Domain=garlick\.ca; Secure/);
+    const dev = await api(new Request('https://garlick-openings.x.workers.dev/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'mitch', password: 'correct horse' }) }));
+    expect(dev.headers.getSetCookie()[0]).not.toMatch(/Domain=/);
+    const out = await api(new Request('https://openings.garlick.ca/api/auth/logout', { method: 'POST', headers: { cookie: `garlick_session=${token}` } }));
+    expect(out.headers.getSetCookie()[0]).toMatch(/^garlick_session=; .*Max-Age=0; Domain=garlick\.ca/);
+    expect((await get('/api/me', `garlick_session=${token}`)).status).toBe(401);
+    expect(await authStore.get('SELECT 1 x FROM sessions WHERE token = ?', token)).toBeNull();
   });
 
   it('new accounts are created in the shared account database with the endgame columns', async () => {

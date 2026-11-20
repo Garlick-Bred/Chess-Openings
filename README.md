@@ -11,8 +11,8 @@ schedule. White sometimes slips in a realistic mistake for you to punish.
 Every wrong move is explained twice: the concrete reason it fails, and the
 opening principle behind it.
 
-**Live: https://openings.garlick.ca** (family accounts are shared with the
-endgame site: log in with the same username and password).
+**Live: https://openings.garlick.ca**. One sign-in covers both Garlick
+sites: log in on either one and you're logged in on the other.
 
 ![A miss, explained](docs/screenshots/drill-mistake.jpg)
 
@@ -107,13 +107,16 @@ deploy/    The built Worker bundle (token-free deploys)
 docs/      DESIGN, RESEARCH, ROADMAP, REUSE, the game report, screenshots
 ```
 
-* **Accounts are shared with Garlick Endgames.** The Worker binds two D1
-  databases.
-  * `AUTH_DB` is the endgame site's database. Its `users` table holds the
-    family accounts; this site only reads it and writes the shared account
-    fields (name, avatar, colour, rating, password).
-  * `DB` is this site's own database: sessions, profiles, runs, the School,
-    the bulb and badges.
+* **Accounts and sign-in are shared with Garlick Endgames.** The Worker binds
+  two D1 databases.
+  * `AUTH_DB` is the endgame site's database. Its `users` and `sessions`
+    tables hold the family accounts and the shared sign-in. This site writes
+    sessions there, plus the shared account fields (name, avatar, colour,
+    rating, password).
+  * `DB` is this site's own database: profiles, runs, the School, the bulb
+    and badges.
+  * Both Workers set `COOKIE_DOMAIN=garlick.ca`, so the `garlick_session`
+    cookie works on every *.garlick.ca site.
 
   Locally, without `AUTH_DB_FILE`, one SQLite file holds everything.
 * No engine or AI runs on the site. Every judgement comes from data built
@@ -139,6 +142,7 @@ node scripts/e2e-openings.cjs /tmp/shots http://localhost:8787   # Playwright wa
 | `DB_FILE` | `data/openings.db` | This site's SQLite file |
 | `AUTH_DB_FILE` | *(none)* | The endgame site's SQLite file, to share its accounts |
 | `INVITE_CODE` | *(empty)* | If set, new accounts need this code |
+| `COOKIE_DOMAIN` | *(empty)* | e.g. `garlick.ca`: share the sign-in with the other Garlick sites |
 | `EXPLORER_URL` | Lichess masters | Alternative opening explorer endpoint |
 | `LICHESS_TOKEN` | *(empty)* | A Lichess personal token (no scopes): unlocks club-player statistics in lessons. On Cloudflare it's a Worker secret |
 

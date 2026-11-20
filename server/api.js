@@ -34,10 +34,10 @@ const MOVE_SECONDS = [0, 3, 5, 8, 12];
 const SURPRISE_RATES = [0, 0.15, 0.25, 0.4];
 
 function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
-  });
+  // A header value may be a list (several Set-Cookie headers).
+  const h = new Headers({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  for (const [k, v] of Object.entries(headers)) for (const x of [].concat(v)) h.append(k, x);
+  return new Response(JSON.stringify(data), { status, headers: h });
 }
 
 export function publicUser(u, profile) {
@@ -70,6 +70,7 @@ export function publicUser(u, profile) {
  *   env.COOKIE_SECURE  - "1" forces Secure cookies (otherwise https requests get them)
  *   env.EXPLORER_URL   - alternative masters explorer endpoint
  *   env.LICHESS_TOKEN  - Lichess personal token: unlocks club-player statistics
+ *   env.COOKIE_DOMAIN  - e.g. "garlick.ca": one sign-in shared with the other Garlick sites
  */
 export function createApi({ store, authStore = store, env = {} }) {
   const inviteCode = env.INVITE_CODE ?? '';
@@ -110,10 +111,13 @@ export function createApi({ store, authStore = store, env = {} }) {
     const path = url.pathname;
     const secure = env.COOKIE_SECURE === '1' || url.protocol === 'https:';
     const token = auth.parseCookies(request.headers.get('cookie'))[auth.COOKIE];
+    const domain = auth.cookieDomain(url.hostname, env.COOKIE_DOMAIN);
+    // The endgame site's old host-only cookie never reaches this host; clear our own old one.
+    const signIn = (t) => ({ 'Set-Cookie': [auth.sessionCookie(t, { secure, domain }), auth.clearCookie({ secure, name: 'go_session' })] });
     const day = DAY_RE.test(url.searchParams.get('day') ?? '') ? url.searchParams.get('day') : new Date().toISOString().slice(0, 10);
     const waitUntil = ctx?.waitUntil ? (p) => ctx.waitUntil(p) : undefined;
     const needUser = async () => {
-      const u = await auth.sessionUser(store, authStore, token);
+      const u = await auth.sessionUser(authStore, token);
       if (!u) throw httpError(401, 'Please log in');
       return { user: u, profile: await ensureProfile(store, u) };
     };
@@ -149,8 +153,8 @@ export function createApi({ store, authStore = store, env = {} }) {
       );
       const userId = r.lastId ?? (await authStore.get('SELECT id FROM users WHERE username = ?', b.username)).id;
       await ensureProfile(store, { id: userId, rating });
-      const t = await auth.createSession(store, userId);
-      return json({ ok: true }, 200, { 'Set-Cookie': auth.sessionCookie(t, { secure }) });
+      const t = await auth.createSession(authStore, userId);
+      return json({ ok: true }, 200, signIn(t));
     }
 
     if (method === 'POST' && path === '/api/auth/login') {
@@ -164,13 +168,13 @@ export function createApi({ store, authStore = store, env = {} }) {
       }
       await auth.clearFailures(store, key);
       await ensureProfile(store, user);
-      const t = await auth.createSession(store, user.id);
-      return json({ ok: true }, 200, { 'Set-Cookie': auth.sessionCookie(t, { secure }) });
+      const t = await auth.createSession(authStore, user.id);
+      return json({ ok: true }, 200, signIn(t));
     }
 
     if (method === 'POST' && path === '/api/auth/logout') {
-      await auth.destroySession(store, token);
-      return json({ ok: true }, 200, { 'Set-Cookie': auth.clearCookie({ secure }) });
+      await auth.destroySession(authStore, token);
+      return json({ ok: true }, 200, { 'Set-Cookie': auth.clearCookie({ secure, domain }) });
     }
 
     if (method === 'GET' && path === '/api/me') {

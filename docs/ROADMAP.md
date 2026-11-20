@@ -2,9 +2,9 @@
 
 ## Still worth building
 
-1. **Your move order.** In October and November 2026 you mostly answered
-   1.d4 with 1...d5 or 1...d6, not 1...Nf6. Either drill 1...Nf6 (the course
-   as built), or add a 1...d6 chapter (it allows 2.e4 and a Pirc).
+1. **A 1.e4 repertoire with 1...d6 (the Pirc)**, the King's Indian's cousin,
+   would reuse most of the same ideas. (Decided: against 1.d4 the course starts
+   1...Nf6, and the first lesson explains why not 1...d5 or 1...d6.)
 2. **More of your own positions.** The decks come from games up to November
    2026. A button (or a weekly job) could re-run the analysis on new games.
    That needs Stockfish, so it's offline today; Stockfish in the browser
@@ -41,16 +41,22 @@
 
 ## Open questions
 
-1. **1...Nf6 or 1...d6?** (see above)
-2. **Should the endgame site also log you in automatically?** Today the
-   accounts are shared but each site has its own login session. One sign-in
-   for both needs a small change and redeploy of the endgame site (a cookie
-   for `.garlick.ca` and shared sessions).
-3. **Other family members:** who plays the King's Indian, and what are their
-   chess.com usernames? I can build their decks.
-4. **A Lichess token** would show what 1000-1400 players actually play in each
-   position (better surprise mistakes than Stockfish's guesses). You said no
-   for now; it's easy to add later.
-5. **The endgame leaderboard** lists every account in the shared users table,
+1. **Family members:** on hold for now. Their decks can be built from their
+   chess.com games whenever you like.
+2. **The endgame leaderboard** lists every account in the shared users table,
    so someone who signs up here also appears there with 0 points. Fine, or
    should the endgame board hide people who never played endgames?
+3. **Club statistics in the course build:** the live site now uses your
+   Lichess token for "club players 1000-1600" in lessons. To also pick
+   surprise mistakes from what club players really play, the token would need
+   to be added to the cloud environment's network secrets for
+   `explorer.lichess.ovh`.
+
+## Done since the first version
+
+* One sign-in for both Garlick sites (a `garlick_session` cookie on
+  `.garlick.ca`, sessions in the endgame site's database).
+* The Garlick Path (worlds and stages), stars, combos, speed and difficulty
+  points.
+* Club-player statistics in lessons (Worker secret `Lichess_token` or
+  `LICHESS_TOKEN`).

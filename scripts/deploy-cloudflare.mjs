@@ -134,8 +134,10 @@ const bindings = [
   { type: 'd1', name: 'AUTH_DB', id: authDb.uuid },
 ];
 const metadata = { main_module: 'worker.js', compatibility_date: COMPAT_DATE, bindings };
+// One sign-in across *.garlick.ca: COOKIE_DOMAIN=garlick.ca (kept if not given).
+if (process.env.COOKIE_DOMAIN) bindings.push({ type: 'plain_text', name: 'COOKIE_DOMAIN', text: process.env.COOKIE_DOMAIN });
 if (process.env.INVITE_CODE) bindings.push({ type: 'secret_text', name: 'INVITE_CODE', text: process.env.INVITE_CODE });
-else metadata.keep_bindings = ['secret_text'];
+metadata.keep_bindings = [...(process.env.INVITE_CODE ? [] : ['secret_text']), ...(process.env.COOKIE_DOMAIN ? [] : ['plain_text'])];
 const form = new FormData();
 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
 form.append('worker.js', new Blob([script], { type: 'application/javascript+module' }), 'worker.js');

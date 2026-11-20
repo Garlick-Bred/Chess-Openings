@@ -20,6 +20,7 @@ export const COURSE = {
   side: 'b',
   intro:
     'Your Black repertoire against 1.d4 and everything else: the same set-up (...Nf6, ...g6, ...Bg7, ...O-O, ...d6) and two pawn breaks, ...e5 and ...c5. ' +
+    'Against 1.d4 it always starts 1...Nf6 (1...d5 leads to Queen’s Gambit structures instead; against 1.e4, 1...d6 is the Pirc, the King’s Indian’s cousin). ' +
     'Most of your opponents never play the main-line King’s Indian, so the course starts with the systems you actually meet.',
   chapters: [
     {
@@ -42,6 +43,8 @@ export const COURSE = {
           id: 'lon-castle',
           name: '5.Bd3 and 6.O-O: ...c5 and ...e5',
           pgn: `1.d4 Nf6 {#develop A knight toward the centre that stops e2-e4 for now. The King's Indian starts like this against almost everything.}
+            (1...d5 {#centre Not the King's Indian. 1...d5 fixes your d-pawn on d5, so you get a Queen's Gambit or London-type game, and the King's Indian plan (...d6, ...e5 and the g7 bishop against d4) never happens. Against 1.d4 the King's Indian starts 1...Nf6. Your instinct fits 1.e4: 1.e4 d6 is the Pirc, the King's Indian's cousin.})
+            (1...d6 {#e5push Playable and it often transposes, but it lets White play 2.e4 with a big centre: a Pirc, not a King's Indian. 1...Nf6 stops e2-e4 for now.})
             2.Bf4 {The London System: the bishop comes out before e3 shuts it in.}
             g6 {#centre Preparing ...Bg7. You let White keep the centre for now and aim a bishop at it.}
             3.Nf3 {White's usual plan: Nf3, e3, Bd3 or Be2, castle, then c3 and h3.}
