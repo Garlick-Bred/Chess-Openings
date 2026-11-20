@@ -33,7 +33,7 @@ async function boardState(page) {
     interactive: !!document.querySelector('.board.interactive'),
     fen: document.querySelector('.board')?.dataset.fen,
     done: !!document.querySelector('.modal.result'),
-    plan: !!document.querySelector('.plan-quiz:not(.answered)'),
+    plan: !!document.querySelector('.plan-modal'),
   }));
 }
 async function waitTurn(page) {
@@ -130,7 +130,7 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
     missAt: 4,
     onMiss: async () => shot(page, 'drill-mistake'),
   });
-  await page.waitForSelector('.plan-quiz');
+  await page.waitForSelector('.plan-modal');
   await shot(page, 'drill-plan');
   await page.click('.plan-option >> nth=0');
   await page.waitForSelector('.modal.result');
@@ -241,6 +241,25 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
       await pp.screenshot({ path: path.join(OUT, 'phone-drill.jpg'), type: 'jpeg', quality: 82 });
     },
   });
+  // The end of the line on a phone: the plan question pops up, then
+  // "Next exercise" is on screen without scrolling and starts a new one.
+  await pp.waitForSelector('.plan-modal');
+  await noOverflow(pp, 'phone-plan');
+  await pp.screenshot({ path: path.join(OUT, 'phone-plan.jpg'), type: 'jpeg', quality: 82 });
+  await pp.click('.plan-option >> nth=0');
+  await pp.waitForSelector('.result-next');
+  await pp.waitForSelector('.rating-line');
+  await pp.waitForTimeout(800);
+  const nb = await (await pp.$('.result-next')).boundingBox();
+  const vh = pp.viewportSize().height;
+  if (!nb || nb.y < 0 || nb.y + nb.height > vh) problems.push(`phone: "Next exercise" is off screen (y=${nb?.y}, viewport ${vh})`);
+  await pp.screenshot({ path: path.join(OUT, 'phone-result.jpg'), type: 'jpeg', quality: 82 });
+  const before = await pp.evaluate(() => location.hash);
+  await pp.click('.result-next');
+  await pp.waitForFunction((h) => location.hash !== h, before);
+  await pp.waitForSelector('.board[data-fen], .lesson-explain');
+  const after = await pp.evaluate(() => location.hash);
+  if (!/^#\/(line|deck|lesson)\//.test(after)) problems.push(`phone: "Next exercise" went to ${after}`);
   for (const w of [320, 375, 414]) {
     await pp.setViewportSize({ width: w, height: 800 });
     for (const route of ['/#/', '/#/train', '/#/lines/london', `/#/lesson/${course.lines[0].id}`, '/#/games', '/#/stats', '/#/family', '/#/principles', '/#/path']) {

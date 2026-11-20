@@ -174,7 +174,10 @@ interface Props {
   prevCloves: number;
   lineName: string | null;
   surprise: { grade: string; found: boolean; san: string } | null;
+  /** The plan question at the end of a line, answered. */
+  plan?: { right: boolean; answer: string; why: string } | null;
   nextLabel: string;
+  retryLabel?: string;
   onNext: () => void;
   onRetry: () => void;
   onLesson: (() => void) | null;
@@ -183,7 +186,7 @@ interface Props {
   onDone: () => void;
 }
 
-export default function ResultModal({ title, outcome, result, submitError, prevCloves, lineName, surprise, nextLabel, onNext, onRetry, onLesson, onReview, onBack, onDone }: Props) {
+export default function ResultModal({ title, outcome, result, submitError, prevCloves, lineName, surprise, plan = null, nextLabel, retryLabel = 'Try again', onNext, onRetry, onLesson, onReview, onBack, onDone }: Props) {
   const ok = outcome.success;
   // The exercise that fills the 5th clove asks whether to keep going or stop for the day.
   const askDone = !!result?.day.bulbCompletedNow;
@@ -212,6 +215,12 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
           <div className="result-title">{title}</div>
           {result && <Stars n={result.stars} />}
           <div className="muted">{outcome.reason}</div>
+          {plan && (
+            <div className={`plan-result ${plan.right ? 'right' : 'wrong'}`}>
+              <b>{plan.right ? '🧭 Right plan.' : `🧭 The plan: ${plan.answer}`}</b>
+              <span className="small">{plan.why}</span>
+            </div>
+          )}
           {surprise && (
             <div className={`school-note ${surprise.found ? 'pass' : 'warn'}`}>
               {surprise.found ? '⚡ White went off script and you punished it.' : '⚡ White went off script with a mistake. Spotting those is a habit: check captures and threats after every unexpected move.'}
@@ -336,16 +345,14 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
               <small className="muted">Extra cloves weave your garlic braid: 5 make a streak shield.</small>
             </div>
           ) : (
-            <button className={`btn ${ok ? 'primary big' : ''}`} onClick={onNext} autoFocus={ok}>
+            <button className="btn primary big result-next" onClick={onNext} autoFocus>
               {nextLabel}
             </button>
           )}
           <div className="row gap center wrap">
-            {!ok && (
-              <button className="btn" onClick={onRetry}>
-                Try again
-              </button>
-            )}
+            <button className="btn" onClick={onRetry}>
+              {retryLabel}
+            </button>
             <button className="btn ghost" onClick={onReview}>
               Review board
             </button>

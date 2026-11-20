@@ -62,10 +62,10 @@ function DrillLoader({ route, course, deck }: { route: Route; course: Course; de
       </div>
     );
   }
-  return <Session course={course} deck={deck} exercise={exercise} school={route.query.get('school') === '1'} />;
+  return <Session course={course} deck={deck} exercise={exercise} />;
 }
 
-function Session({ course, deck, exercise, school }: { course: Course; deck: Deck | null; exercise: Exercise; school: boolean }) {
+function Session({ course, deck, exercise }: { course: Course; deck: Deck | null; exercise: Exercise }) {
   const { me, refresh } = useApp();
   const { view, onMove, ideaHint, showMove, answerPlan, giveUp } = useTrainer({ course, deck, exercise });
   const [flipped, setFlipped] = useState(false);
@@ -106,14 +106,10 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
     return null;
   }, [view.fen]);
 
+  // Always offer the next exercise from Opening School, wherever this one was started.
   const next = () => {
-    if (school) {
-      const r = nextExerciseRoute(me, course, deck);
-      if (r) return go(r);
-      return go('/train');
-    }
-    if (line) return go(`/line/${line.id}?mode=free&r=${Date.now()}`);
-    return go('/train');
+    const r = nextExerciseRoute(me, course, deck);
+    return go(r ?? '/train');
   };
   const retry = () => (line ? go(`/line/${line.id}?mode=free&r=${Date.now()}`) : go(`/deck/${item!.id}?r=${Date.now()}`));
 
@@ -123,6 +119,7 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
       if (e.key === 'h' && view.phase === 'user') ideaHint();
       if (e.key === 'f') setFlipped((f) => !f);
       if (e.key === 'Enter' && view.phase === 'done' && view.result && !view.result.day.bulbCompletedNow) next();
+      if (view.phase === 'plan' && line && /^[1-9]$/.test(e.key) && Number(e.key) <= line.plan.options.length) answerPlan(Number(e.key) - 1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -251,16 +248,6 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
           </div>
         )}
 
-        {view.phase === 'plan' && line && (
-          <div className="plan-quiz">
-            <b>🧭 {line.plan.q}</b>
-            {line.plan.options.map((o, i) => (
-              <button key={i} className="btn plan-option" onClick={() => answerPlan(i)}>
-                {o}
-              </button>
-            ))}
-          </div>
-        )}
         {view.planAnswer != null && line && (
           <div className={`plan-quiz answered ${view.planAnswer === line.plan.answer ? 'right' : 'wrong'}`}>
             <b>{view.planAnswer === line.plan.answer ? '✓ Right plan.' : `The plan: ${line.plan.options[line.plan.answer]}`}</b>
@@ -322,6 +309,23 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
         )}
       </aside>
 
+      {/* The end of a line: one question about the plan, over the board so it can't be missed. */}
+      {view.phase === 'plan' && line && (
+        <div className="modal-backdrop">
+          <div className="modal plan-modal" role="dialog" aria-label="The plan">
+            <div className="eyebrow">Line complete · one last question</div>
+            <h2>🧭 {line.plan.q}</h2>
+            <div className="plan-options">
+              {line.plan.options.map((o, i) => (
+                <button key={i} className="btn plan-option" onClick={() => answerPlan(i)}>
+                  {o}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {view.phase === 'done' && view.outcome && modalOpen && (
         <ResultModal
           title={
@@ -341,13 +345,15 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
           prevCloves={prevCloves}
           lineName={line?.name ?? null}
           surprise={view.surpriseResult}
+          plan={line && view.planAnswer != null ? { right: view.planAnswer === line.plan.answer, answer: line.plan.options[line.plan.answer], why: line.plan.why } : null}
           onNext={next}
           onRetry={retry}
+          retryLabel={line ? 'Play this line again' : 'Try this position again'}
           onLesson={line ? () => go(`/lesson/${line.id}`) : null}
           onReview={() => setModalOpen(false)}
           onBack={() => go('/train')}
           onDone={() => go('/done')}
-          nextLabel={school ? 'Next exercise ▸' : line ? 'Play it again ▸' : 'Back to training ▸'}
+          nextLabel="Next exercise ▸"
         />
       )}
     </div>

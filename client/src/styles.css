@@ -3054,3 +3054,36 @@ details[open] > summary.tips-toggle::before {
     font-size: 2.4rem;
   }
 }
+
+/* End of a line: the plan question as a dialog, and the answer on the result screen. */
+.plan-modal h2 {
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+.plan-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.plan-result {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0 4px;
+  line-height: 1.4;
+}
+.plan-result.right {
+  background: rgba(129, 182, 76, 0.16);
+}
+.plan-result.wrong {
+  background: rgba(247, 198, 49, 0.13);
+}
+/* Keep "Next exercise" in reach on a phone without scrolling the whole result. */
+.modal.result .result-next {
+  position: sticky;
+  bottom: 8px;
+  z-index: 2;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
