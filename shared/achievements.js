@@ -1,7 +1,7 @@
 // Badges. An icon of 'garlick-N' is drawn as a Garlick bulb with N cloves
 // filled; anything else is an emoji. `check` receives a context built by the
 // server after each exercise:
-//   ctx.attempt - { kind: 'line'|'mistake'|'punish', itemId, chapter, success, clean, timed, slowMoves, surprise, mode }
+//   ctx.attempt - { kind: 'line'|'mistake'|'punish', itemId, chapter, success, clean, timed, slowMoves, surprise, mode, stars, combo }
 //   ctx.totals  - { points, runs, cleanRuns, bulbs, streak, golden, graduated, graduatedByChapter: {id:n},
 //                   chapterLines: {id:n}, punished, mistakesFixed, timedClean, surprisesFound }
 //   ctx.events  - { golden, shieldEarned, repaired, graduated }
@@ -45,6 +45,11 @@ export const ACHIEVEMENTS = [
   { id: 'golden-10', name: 'Golden Hoard', icon: '🏆', desc: 'Collect 10 golden cloves.', check: (c) => (c.totals.golden ?? 0) >= 10 },
   { id: 'shield-1', name: 'Braided Shield', icon: '🛡️', desc: 'Weave a streak shield from extra cloves.', check: (c) => !!c.events?.shieldEarned },
   { id: 'repair-1', name: 'Second Wind', icon: '💨', desc: 'Repair a broken streak with a double bulb.', check: (c) => !!c.events?.repaired },
+  { id: 'world-2', name: 'Out of the Garden', icon: '🌿', desc: 'Reach world 2 on the Garlick Path.', check: (c) => (c.totals.path?.world ?? 1) >= 2 },
+  { id: 'world-5', name: 'Kitchen Kingdom', icon: '🍳', desc: 'Reach world 5 on the Garlick Path.', check: (c) => (c.totals.path?.world ?? 1) >= 5 },
+  { id: 'world-10', name: 'Garlick Crown', icon: '👑', desc: 'Reach world 10 on the Garlick Path.', check: (c) => (c.totals.path?.world ?? 1) >= 10 },
+  { id: 'three-stars-10', name: 'Star Collector', icon: '⭐', desc: 'Earn three stars (clean and fast) 10 times.', check: (c) => (c.totals.threeStars ?? 0) >= 10 },
+  { id: 'combo-5', name: 'On a Roll', icon: '🎳', desc: 'Five clean runs in a row in one day.', check: (c) => (c.attempt?.combo ?? 0) >= 5 },
   { id: 'points-1k', name: 'Four Digits', icon: '💯', desc: 'Earn 1,000 points.', check: (c) => c.totals.points >= 1000 },
   { id: 'points-10k', name: 'Garlick Royalty', icon: '🏰', desc: 'Earn 10,000 points.', check: (c) => c.totals.points >= 10000 },
 ];

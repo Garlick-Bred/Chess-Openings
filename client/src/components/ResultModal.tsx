@@ -101,6 +101,55 @@ function RatingAndSchool({ result, lineName }: { result: AttemptResult; lineName
   );
 }
 
+/** ⭐⭐⭐: 1 finished, 2 clean, 3 clean and fast. */
+function Stars({ n }: { n: number }) {
+  return (
+    <div className="result-stars" aria-label={`${n} of 3 stars`}>
+      {[1, 2, 3].map((i) => (
+        <span key={i} className={i <= n ? 'on' : ''} style={{ animationDelay: `${0.25 + i * 0.18}s` }}>
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Progress along the Garlick Path, with stage-up and new-world moments. */
+function PathProgress({ result }: { result: AttemptResult }) {
+  const { before, after, stagesUp, newWorld } = result.path;
+  const [pct, setPct] = useState(stagesUp ? 0 : before.progress);
+  useEffect(() => {
+    const t = setTimeout(() => setPct(after.progress), 400);
+    return () => clearTimeout(t);
+  }, [after.progress]);
+  return (
+    <div className="path-progress" style={{ ['--accent' as any]: after.info.accent }}>
+      {newWorld ? (
+        <div className="world-up" style={{ background: `linear-gradient(135deg, ${newWorld.bg[0]}, ${newWorld.bg[1]})` }}>
+          <span className="world-up-icon">{newWorld.icon}</span>
+          <div>
+            <b>New world: {newWorld.name}!</b>
+            <small>{newWorld.blurb}</small>
+          </div>
+        </div>
+      ) : stagesUp > 0 ? (
+        <div className="stage-up">⬆ Stage {after.label}!</div>
+      ) : null}
+      <div className="row between small">
+        <span>
+          <span aria-hidden="true">{after.info.icon}</span> Stage <b>{after.label}</b>
+        </span>
+        <span className="muted">
+          {after.toNext} to {after.nextLabel}
+        </span>
+      </div>
+      <div className="bar">
+        <div style={{ width: `${Math.round(pct * 100)}%`, background: after.info.accent }} />
+      </div>
+    </div>
+  );
+}
+
 function CountUp({ to, ms = 900 }: { to: number; ms?: number }) {
   const [v, setV] = useState(0);
   useEffect(() => {
@@ -161,6 +210,7 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
       <div className={`modal result ${ok ? 'win' : 'loss'}`} onClick={(e) => e.stopPropagation()}>
         <div className="result-head">
           <div className="result-title">{title}</div>
+          {result && <Stars n={result.stars} />}
           <div className="muted">{outcome.reason}</div>
           {surprise && (
             <div className={`school-note ${surprise.found ? 'pass' : 'warn'}`}>
@@ -231,6 +281,7 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
                 <li className="bulb-line" style={{ animationDelay: `${0.15 + result.breakdown.length * 0.08}s` }}>
                   <span className="row gap">
                     <GarlickBulb filled={5} size={16} celebrate={false} /> Full bulb bonus
+                    {result.day.streakBefore > 0 ? ` (🔥 ${result.day.streakBefore}-day streak)` : ''}
                   </span>
                   <b>+{result.day.bulbBonus}</b>
                 </li>
@@ -238,6 +289,8 @@ export default function ResultModal({ title, outcome, result, submitError, prevC
             </ul>
           </div>
         )}
+        {result && result.points + (result.day.bulbBonus ?? 0) > 0 && <PathProgress result={result} />}
+        {result && result.combo >= 2 && <div className="combo-note">🎳 Combo ×{result.combo}: clean runs in a row today</div>}
         {!result && !submitError && <div className="muted small center">Saving…</div>}
         {submitError && <div className="form-error">{submitError}</div>}
 

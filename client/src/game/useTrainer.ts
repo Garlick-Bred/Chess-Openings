@@ -107,6 +107,10 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
   const userMovesRef = useRef(0);
   const firstMissRef = useRef<{ ply: number; san: string; grade: string; principle: string | null } | null>(null);
   const submittedRef = useRef(false);
+  // Thinking time: from the moment it's your turn to each move you try (for the speed bonus).
+  const thinkRef = useRef(0);
+  const turnStartRef = useRef<number | null>(null);
+  const finishedRef = useRef(false);
   const timers = useRef<number[]>([]);
 
   const isLine = exercise.kind === 'line';
@@ -168,6 +172,7 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
       gameRef.current = g;
       setView((v) => ({ ...v, fen: g.fen(), lastMove: last, phase: 'user' }));
       startRef.current = Date.now();
+      turnStartRef.current = Date.now();
     } else {
       gameRef.current = g;
       plyRef.current = 0;
@@ -202,6 +207,8 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
         firstMiss: firstMissRef.current,
         principle: firstMissRef.current?.principle ?? (v.surpriseResult && !v.surpriseResult.found ? 'cct' : null),
         durationMs: Date.now() - startRef.current,
+        thinkMs: Math.round(thinkRef.current),
+        finished: finishedRef.current,
         userMoves: userMovesRef.current,
         lessonReplay: isLine ? exercise.lessonReplay : false,
         day: localDay(),
@@ -233,7 +240,7 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
     else sfx.move();
     const note = isSurprise ? null : course.positions[posKey(before)]?.notes?.[san];
     plyRef.current = ply + 1;
-    startRef.current ||= Date.now();
+    turnStartRef.current = Date.now();
     setView((v) => ({
       ...v,
       fen: g.fen(),
@@ -284,6 +291,10 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
       const san = mv.san;
       const slow = v.deadline != null && Date.now() > v.deadline;
       userMovesRef.current++;
+      if (turnStartRef.current != null) {
+        thinkRef.current += Date.now() - turnStartRef.current;
+        turnStartRef.current = Date.now(); // a retry after a miss keeps counting from here
+      }
 
       // ---- A position from your games, or a surprise mistake to punish.
       if (!isLine || v.surpriseLive) {
@@ -329,6 +340,8 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
         const surpriseResult = isLine ? { grade: judged.grade, found, san } : null;
         const moves = [...v.moves, { san, by: 'you' as const, grade: found ? 'found' : judged.grade }];
         const final = { fen: g.fen(), lastMove: [mv.from, mv.to] as [string, string], moves, feedback, arrows, surpriseLive: false, surpriseResult };
+        finishedRef.current = true;
+        turnStartRef.current = null;
         if (isLine) {
           const ok = v.misses === 0;
           void submit(ok, found ? 'You punished White’s mistake!' : 'White made a mistake and it slipped by.', final);
@@ -349,6 +362,8 @@ export function useTrainer({ course, deck, exercise }: { course: Course; deck: D
         else sfx.move();
         const note = pos?.notes?.[san];
         plyRef.current = ply + 1;
+        turnStartRef.current = null;
+        if (plyRef.current >= line!.sans.length) finishedRef.current = true;
         const wasMiss = triesRef.current > 0;
         triesRef.current = 0;
         setView((x) => ({

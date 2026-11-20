@@ -63,19 +63,28 @@ endgame site: log in with the same username and password).
 * **The end of every line is a plan question** ("the centre is locked: where
   do you attack?"), because the analysis shows your first mistake comes
   around move 11, when the opening turns into a middlegame.
-* Everything from the endgame site: the **daily Garlick bulb**, **streak
-  shields** woven from extra cloves, streak **repair** with a double bulb,
-  **golden cloves**, an Elo-style **opening rating**, **31 badges**, the
-  **family board**, "keep going or done for today?", and the phone-first
-  layout with a bottom tab bar.
+* **The Garlick Path:** points move you along a map like a puzzle game's:
+  stage 1-1, 1-2 … 1-10, then world 2. There are ten themed worlds, from the
+  Garden Gate 🌱 to the Garlick Crown 👑.
+  * Points come from finishing exercises, harder challenges (×1 to ×2),
+    clean play, speed, combos of clean runs, punishing surprises, and your
+    daily streak.
+  * Every exercise earns 1–3 ⭐.
+  * The Elo-style **opening rating** is separate: it measures strength; the
+    path measures effort.
+* From the endgame site:
+  * the **daily Garlick bulb**, **streak shields** woven from extra cloves,
+    streak **repair** with a double bulb, and **golden cloves**;
+  * **36 badges**, the **family board**, and "keep going or done for today?";
+  * the phone-first layout with a bottom tab bar.
 
 | Lesson | Surprise! | Your games |
 |---|---|---|
 | ![](docs/screenshots/lesson.jpg) | ![](docs/screenshots/surprise.jpg) | ![](docs/screenshots/games.jpg) |
 
-| Home | Phone | Opening School |
+| The Garlick Path | Phone | Opening School |
 |---|---|---|
-| ![](docs/screenshots/home.jpg) | ![](docs/screenshots/phone-drill.jpg) | ![](docs/screenshots/train.jpg) |
+| ![](docs/screenshots/phone-path.jpg) | ![](docs/screenshots/phone-drill.jpg) | ![](docs/screenshots/train.jpg) |
 
 ## How it works
 
@@ -131,6 +140,7 @@ node scripts/e2e-openings.cjs /tmp/shots http://localhost:8787   # Playwright wa
 | `AUTH_DB_FILE` | *(none)* | The endgame site's SQLite file, to share its accounts |
 | `INVITE_CODE` | *(empty)* | If set, new accounts need this code |
 | `EXPLORER_URL` | Lichess masters | Alternative opening explorer endpoint |
+| `LICHESS_TOKEN` | *(empty)* | A Lichess personal token (no scopes): unlocks club-player statistics in lessons. On Cloudflare it's a Worker secret |
 
 Behind an HTTPS proxy, start Node with `NODE_USE_ENV_PROXY=1` so the
 explorer and chess.com requests go through it.

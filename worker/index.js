@@ -45,7 +45,7 @@ export default {
       return createApi({
         store,
         authStore: env.AUTH_DB ? createD1Store(env.AUTH_DB) : store,
-        env: { INVITE_CODE: env.INVITE_CODE ?? '', EXPLORER_URL: env.EXPLORER_URL },
+        env: { INVITE_CODE: env.INVITE_CODE ?? '', EXPLORER_URL: env.EXPLORER_URL, LICHESS_TOKEN: env.LICHESS_TOKEN ?? '' },
       });
     })();
     const api = await handle(request, ctx);

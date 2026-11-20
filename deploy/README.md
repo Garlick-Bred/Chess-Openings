@@ -13,6 +13,8 @@ through the Cloudflare connector:
    * `compatibility_date: 2025-09-01`
    * D1 binding `DB` → `garlick-openings` (this site's data)
    * D1 binding `AUTH_DB` → `garlick-endgames` (the shared family accounts)
+   * `keep_bindings: ["secret_text"]`, so secrets set in the dashboard
+     (`LICHESS_TOKEN`, `INVITE_CODE`) survive the upload
 4. The custom domain is `openings.garlick.ca` (a Workers custom domain).
 
 The schema is created on the first request (`ensureSchema`), so no

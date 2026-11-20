@@ -1,4 +1,5 @@
-import { BULB_BONUS, addDays } from '@shared/scoring.js';
+import { bulbBonus, addDays } from '@shared/scoring.js';
+import { STAGES_PER_WORLD } from '@shared/path.js';
 import { formatCloves } from '@shared/cloves.js';
 import insights from '@shared/insights.json';
 import { localDay, type Me } from '../api';
@@ -57,7 +58,7 @@ export default function HomePage() {
   const course = useCourse();
   const deck = useDeck(me.user.settings.chesscom);
   const left = Math.max(0, 5 - me.today.cloves);
-  const r = me.totals.rank;
+  const path = me.totals.path;
   const doneToday = isDoneToday(me.user.username);
   const cur = course ? curriculumFor(me, course) : null;
   const deckDue = deckDueFor(me, deck);
@@ -98,7 +99,7 @@ export default function HomePage() {
             </p>
           ) : (
             <p className="muted">
-              Each line you play from memory, each check-up and each position from your games fills a clove. Fill all five for <b>+{BULB_BONUS}</b> bonus points
+              Each line you play from memory, each check-up and each position from your games fills a clove. Fill all five for <b>+{bulbBonus(me.totals.streak)}</b> bonus points
               {me.totals.streak > 0 ? (
                 <>
                   {' '}
@@ -181,31 +182,51 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="rank card">
+      <a className="card path-card" href="#/path" style={{ background: `linear-gradient(135deg, ${path.info.bg[0]}, ${path.info.bg[1]})`, borderColor: path.info.accent }}>
         <div className="row between">
           <div>
-            <div className="eyebrow">Rank</div>
-            <div className="rank-name">{r.name}</div>
+            <div className="eyebrow">
+              Garlick Path · World {path.world} · {path.info.name}
+            </div>
+            <div className="stage-big" style={{ color: path.info.accent }}>
+              <span aria-hidden="true">{path.info.icon}</span> {path.label}
+            </div>
           </div>
           <div className="right">
             <div className="rank-points">{me.totals.points.toLocaleString()} pts</div>
-            {r.next && (
-              <div className="small muted">
-                {r.toNext.toLocaleString()} to {r.next}
-              </div>
-            )}
+            <div className="small muted">
+              {path.toNext} to {path.nextLabel}
+            </div>
           </div>
         </div>
         <div className="bar">
-          <div style={{ width: `${Math.round(r.progress * 100)}%` }} />
+          <div style={{ width: `${Math.round(path.progress * 100)}%`, background: path.info.accent }} />
+        </div>
+        <div className="stage-dots" aria-hidden="true">
+          {Array.from({ length: STAGES_PER_WORLD }, (_, i) => (
+            <i key={i} className={i + 1 < path.stage ? 'done' : i + 1 === path.stage ? 'current' : ''} style={i + 1 <= path.stage ? { background: path.info.accent } : undefined} />
+          ))}
         </div>
         <div className="row gap small muted wrap">
           <span>
             {me.totals.graduated}/{me.totals.lineCount} lines graduated
           </span>
-          <span>{plural(me.totals.cleanRuns, 'clean run')}</span>
+          <span>⭐⭐⭐ ×{me.totals.threeStars}</span>
           <span>{me.totals.punished} punished</span>
-          <span>opening rating {myRating(me)}</span>
+          <span className="grow right">Open the path ▸</span>
+        </div>
+      </a>
+
+      <section className="card rating-card">
+        <div className="row between">
+          <div>
+            <div className="eyebrow">Opening rating (separate from points)</div>
+            <div className="rank-name">{myRating(me)}</div>
+          </div>
+          <p className="small muted grow" style={{ maxWidth: 360, margin: 0 }}>
+            Elo-style, on the chess rating scale: it measures how well you know your openings and moves up and down with your results. Points only ever move you forward
+            on the path.
+          </p>
         </div>
       </section>
 

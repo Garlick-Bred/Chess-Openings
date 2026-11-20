@@ -142,16 +142,53 @@ still comes later. "⚡ A line with a surprise" on the Train page forces one.
     best move.
 * When everything is done, School serves extra practice.
 
-## 6. Points, cloves, rating
+## 6. Points and the Garlick Path, cloves, rating
+
+**Points move you along the Garlick Path** (`shared/path.js`), a map like a
+puzzle game's:
+* **Stages and worlds:** stages 1-1, 1-2 … 1-10, then world 2 starts at 2-1.
+* **Points per stage:** 100 in world 1, 150 in world 2, +50 per world after
+  that. Stage 1-2 is at 100 points, world 2 at 1,000, world 3 at 2,500.
+* **Themes:** each world has its own name, colours and scenery. In order:
+  Garden Gate 🌱, Sprout Meadow 🌿, Bulb Hollow 🧄, Braid Market 🧺,
+  Kitchen Kingdom 🍳, Castle Larder 🏰, Midnight Grove 🌙, Dragon Peaks 🐉,
+  Golden Harvest 🌾, Garlick Crown 👑.
+* **After world 10** the themes repeat as "II", "III"….
+* **Points only go up**, so the path only moves forward.
+
+**Points per exercise** (`shared/scoring.js`):
 
 | | |
 |---|---|
-| Base points | A line: 8 + 2 per Black move (a surprise run: per move played). A punish position 15, one of your mistakes 12 |
-| Bonuses | Clean +25% · beat the clock on every move +25% · punished a surprise +50% · golden clove |
-| Penalties | Idea hint −10% each · move shown −25% each; a finished run is worth at least 20% of base; a missed one 0 |
-| Cloves | 1 for the day's test of a line, a due check-up, or a deck position; ½ for extra practice; 1 for the run after a lesson (2 a day); a shown move halves it |
-| Bulb | 5 cloves, +50 points, streaks, 🛡️ shields from extra cloves, repair with a double bulb, golden cloves (about 1 in 8 at your level, never more than 15 apart). Same rules as the endgame site |
-| Opening rating | Elo-style, starts at your chess rating, gently anchored to it. Line ratings by chapter: tricks 800, London/Colle 1000, flank 1050, quiet c4/Bg5 1100, Jobava 1150, main lines 1250, +5 per move beyond five. Timed check-ups +75. Deck positions 1050-1350. Clean runs never lower it; runs after a lesson are unrated |
+| Completed | Base × difficulty. Base: a line 8 + 2 per Black move (a surprise run: per move played); a punish position 15; one of your mistakes 12. Difficulty by the exercise's rating: Easy (≤950) ×1, Medium (≤1150) ×1.25, Hard (≤1300) ×1.5, Expert ×2. Timed check-ups add 75 to the rating |
+| Finished a line with misses | 40% of that, one star |
+| Clean | +25% (no misses, no hints) |
+| Speed | Up to +30%, measured by thinking time per move (only while it's your turn). Full bonus at half of par or less; nothing at par. Par is 6 s a move for lines, 40 s for positions from your games |
+| Combo | +10% for each clean run in a row today before this one, up to +50% |
+| Surprise punished | +50% |
+| Hints | −10% per idea hint, −25% per move shown; a finished exercise is worth at least 20% of its completion points |
+| Full bulb | 50 points + 10 per day of the streak you bring into today (up to 150) |
+| Golden clove | An occasional bonus (about 1 in 8 at your level) |
+| Lesson replay | Half points |
+| Stars | ⭐ finished · ⭐⭐ clean · ⭐⭐⭐ clean and fast (at least half the speed bonus) |
+
+**Cloves:**
+* 1 for the day's test of a line, a due check-up, or a deck position.
+* ½ for extra practice.
+* 1 for the run after a lesson (up to 2 a day).
+* A shown move halves it.
+
+The bulb, 🛡️ streak shields woven from extra cloves, repair with a double
+bulb, and golden cloves follow the same rules as the endgame site.
+
+**The opening rating is separate from points.** It's Elo-style and starts at
+your chess rating, gently anchored to it. It moves up and down with results;
+points don't affect it.
+* Line ratings by chapter: tricks 800, London and Colle 1000, flank 1050,
+  quiet c4 and Bg5 systems 1100, Jobava 1150, main lines 1250, plus 5 per move
+  beyond five.
+* Deck positions are rated 1050-1350.
+* Clean runs never lower it, and runs right after a lesson are unrated.
 
 ## 7. Your games (`client/src/course.ts`, `server/chesscom.js`)
 

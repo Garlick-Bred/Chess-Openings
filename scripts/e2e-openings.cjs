@@ -204,6 +204,9 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
   await page.waitForSelector('.sys-table');
   await page.waitForSelector('.line-row, .warn', { timeout: 30000 }).catch(() => problems.push('games: no recent games loaded'));
   await shot(page, 'games');
+  await page.goto(`${BASE}/#/path`);
+  await page.waitForSelector('.path-map');
+  await shot(page, 'path');
   for (const p of ['stats', 'family', 'badges']) {
     await page.goto(`${BASE}/#/${p}`);
     await page.waitForSelector('main .page h1, main h1');
@@ -221,6 +224,7 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
     ['phone-lesson', '/#/lesson/lon-castle', '.lesson-explain'],
     ['phone-games', '/#/games', '.sys-table'],
     ['phone-stats', '/#/stats', '.tiles'],
+    ['phone-path', '/#/path', '.path-map'],
   ]) {
     await pp.goto(BASE + route);
     await pp.waitForSelector(sel);
@@ -239,7 +243,7 @@ async function playLine(page, line, { missAt = -1, onMiss } = {}) {
   });
   for (const w of [320, 375, 414]) {
     await pp.setViewportSize({ width: w, height: 800 });
-    for (const route of ['/#/', '/#/train', '/#/lines/london', `/#/lesson/${course.lines[0].id}`, '/#/games', '/#/stats', '/#/family', '/#/principles']) {
+    for (const route of ['/#/', '/#/train', '/#/lines/london', `/#/lesson/${course.lines[0].id}`, '/#/games', '/#/stats', '/#/family', '/#/principles', '/#/path']) {
       await pp.goto(BASE + route);
       await pp.waitForTimeout(500);
       await noOverflow(pp, `${w}px ${route}`);

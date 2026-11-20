@@ -16,6 +16,7 @@ import AchievementsPage from './pages/Achievements';
 import LeaderboardPage from './pages/Leaderboard';
 import SettingsPage from './pages/Settings';
 import DayDonePage from './pages/DayDone';
+import PathPage from './pages/Path';
 
 interface AppCtx {
   me: Me;
@@ -182,6 +183,9 @@ export default function App() {
       break;
     case 'done':
       page = <DayDonePage />;
+      break;
+    case 'path':
+      page = <PathPage />;
       break;
     case 'stats':
       page = <StatsPage />;

@@ -31,6 +31,8 @@ function Lesson({ course, line, school }: { course: Course; line: Line; school: 
   const [auto, setAuto] = useState(false);
   const [explorer, setExplorer] = useState<ExplorerData | null>(null);
   const [showMasters, setShowMasters] = useState(false);
+  const [db, setDb] = useState<'masters' | 'club'>('masters');
+  const [explorerError, setExplorerError] = useState<string | null>(null);
   const fens = course.lineFens[line.id];
   const chapter = course.chapterById[line.chapter];
   const fen = fens[shown];
@@ -67,14 +69,15 @@ function Lesson({ course, line, school }: { course: Course; line: Line; school: 
     if (!showMasters) return;
     let live = true;
     setExplorer(null);
+    setExplorerError(null);
     api
-      .get<ExplorerData>(`/api/explorer?fen=${encodeURIComponent(fen)}`)
+      .get<ExplorerData>(`/api/explorer?fen=${encodeURIComponent(fen)}&db=${db}`)
       .then((d) => live && setExplorer(d))
-      .catch(() => live && setExplorer(null));
+      .catch((e) => live && setExplorerError(e.message));
     return () => {
       live = false;
     };
-  }, [fen, showMasters]);
+  }, [fen, showMasters, db]);
 
   const step = (d: number) => {
     const n = Math.max(0, Math.min(line.sans.length, shown + d));
@@ -203,10 +206,22 @@ function Lesson({ course, line, school }: { course: Course; line: Line; school: 
 
           <div className="tips">
             <button className="tips-toggle" onClick={() => setShowMasters((v) => !v)}>
-              {showMasters ? '▾' : '▸'} Master games from this position
+              {showMasters ? '▾' : '▸'} Games from this position
             </button>
+            {showMasters && (
+              <div className="segmented small explorer-db">
+                <button type="button" className={db === 'masters' ? 'on' : ''} onClick={() => setDb('masters')}>
+                  Masters
+                </button>
+                <button type="button" className={db === 'club' ? 'on' : ''} onClick={() => setDb('club')}>
+                  Club players 1000–1600
+                </button>
+              </div>
+            )}
             {showMasters &&
-              (explorer ? (
+              (explorerError ? (
+                <div className="small muted">{explorerError}</div>
+              ) : explorer ? (
                 <table className="explorer">
                   <tbody>
                     {explorer.moves.slice(0, 6).map((m) => {
@@ -224,13 +239,13 @@ function Lesson({ course, line, school }: { course: Course; line: Line; school: 
                     })}
                     {explorer.moves.length === 0 && (
                       <tr>
-                        <td className="muted small">No master games reach this position.</td>
+                        <td className="muted small">No {db === 'club' ? 'club' : 'master'} games reach this position.</td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               ) : (
-                <div className="small muted">Loading from the Lichess masters database…</div>
+                <div className="small muted">Loading from the Lichess opening explorer…</div>
               ))}
           </div>
           <div className="tips">

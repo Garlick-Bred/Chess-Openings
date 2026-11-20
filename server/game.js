@@ -5,7 +5,8 @@
 //
 // `store` is this site's database; `authStore` holds the shared accounts.
 import { LINES, LINE_BY_ID, CHAPTERS, DECKS } from '../shared/course-index.js';
-import { scoreRun, BULB_CLOVES, BULB_BONUS, rankFor, addDays, basePoints } from '../shared/scoring.js';
+import { scoreRun, BULB_CLOVES, bulbBonus, addDays, basePoints } from '../shared/scoring.js';
+import { pathFor, pathChange } from '../shared/path.js';
 import { cloveValue, cloveShortfall, LESSON_CLOVES_PER_DAY } from '../shared/cloves.js';
 import { streakInfo, shieldDaysToUse, weaveBraid, rollGolden, goldenBonus, BRAID_SIZE, MAX_SHIELDS, REPAIR_CLOVES } from '../shared/streak.js';
 import { runScore, rateAttempt, startingRating, TIMED_BONUS } from '../shared/rating.js';
@@ -122,7 +123,8 @@ export async function getTotals(store, userId, today) {
               COALESCE(SUM(CASE WHEN success AND kind = 'punish' THEN 1 ELSE 0 END),0) + COALESCE(SUM(CASE WHEN surprise_found = 1 THEN 1 ELSE 0 END),0) punished,
               COALESCE(SUM(CASE WHEN surprise_found = 1 THEN 1 ELSE 0 END),0) surprises,
               COALESCE(SUM(CASE WHEN success AND kind = 'mistake' THEN 1 ELSE 0 END),0) fixed,
-              COALESCE(SUM(CASE WHEN success AND timed = 1 AND slow_moves = 0 THEN 1 ELSE 0 END),0) timed_clean
+              COALESCE(SUM(CASE WHEN success AND timed = 1 AND slow_moves = 0 THEN 1 ELSE 0 END),0) timed_clean,
+              COALESCE(SUM(CASE WHEN stars = 3 THEN 1 ELSE 0 END),0) three_stars
        FROM attempts WHERE user_id = ?`,
       userId,
     ),
@@ -149,6 +151,7 @@ export async function getTotals(store, userId, today) {
     surprisesFound: a.surprises,
     mistakesFixed: a.fixed,
     timedClean: a.timed_clean,
+    threeStars: a.three_stars,
     bulbs: b.bulbs,
     streak: streak.streak,
     shields: prof.shields,
@@ -161,7 +164,7 @@ export async function getTotals(store, userId, today) {
     graduatedByChapter,
     chapterLines: CHAPTER_LINES,
     lineCount: LINES.length,
-    rank: rankFor(points),
+    path: pathFor(points),
   };
 }
 
@@ -209,7 +212,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
     if (!item) throw httpError(400, 'Unknown deck position');
   }
   await applyShields(store, user.id, day);
-  const [progressBefore, prow, drow, dayRow0, profile, alreadyRows] = await Promise.all([
+  const [progressBefore, prow, drow, dayRow0, profile, alreadyRows, recentToday, sdBefore] = await Promise.all([
     getProgress(store, user.id),
     kind === 'line'
       ? store.get('SELECT status, clean_days, last_day, review_due, review_step FROM progress WHERE user_id = ? AND item_id = ?', user.id, item.id)
@@ -218,6 +221,8 @@ export async function recordAttempt(store, user, body, opts = {}) {
     store.get('SELECT cloves, bulb_done, bonus FROM days WHERE user_id = ? AND day = ?', user.id, day),
     store.get('SELECT * FROM profiles WHERE user_id = ?', user.id),
     store.all('SELECT achievement_id FROM achievements WHERE user_id = ?', user.id),
+    store.all('SELECT success, misses, idea_hints, move_hints FROM attempts WHERE user_id = ? AND day = ? ORDER BY id DESC LIMIT 6', user.id, day),
+    streakDays(store, user.id),
   ]);
 
   const success = !!body.success;
@@ -242,7 +247,23 @@ export async function recordAttempt(store, user, body, opts = {}) {
     lessonReplay,
   };
   if (success && run.misses > 0) throw httpError(400, 'A run with misses is not a success');
-  const score = scoreRun(run);
+  // Points: harder challenges (by the exercise's rating), speed (thinking
+  // time per move) and the clean-run combo today.
+  const durationMs = int(body.durationMs, 0, 3600e3);
+  const puzzle = surprise ? SURPRISE_RATING : item.rating + (run.timed ? TIMED_BONUS : 0);
+  let combo = 0;
+  for (const r of recentToday) {
+    if (r.success && !r.misses && !r.idea_hints && !r.move_hints) combo++;
+    else break;
+  }
+  const score = scoreRun({
+    ...run,
+    rating: puzzle,
+    finished: !!body.finished,
+    thinkMs: body.thinkMs != null ? Math.min(durationMs, int(body.thinkMs, 0, 3600e3)) : null,
+    userMoves: int(body.userMoves, 0, 200),
+    combo,
+  });
   const breakdown = [...score.breakdown];
   let points = score.total;
 
@@ -262,7 +283,6 @@ export async function recordAttempt(store, user, body, opts = {}) {
 
   // Opening rating.
   const ratingBefore = profile.op_rating ?? startingRating(user.rating);
-  const puzzle = surprise ? SURPRISE_RATING : item.rating + (run.timed ? TIMED_BONUS : 0);
   const rated = !lessonReplay;
   const quality = surprise ? (success && surprise.found ? 1 : 0) : runScore(run);
   const rating = rated
@@ -283,6 +303,9 @@ export async function recordAttempt(store, user, body, opts = {}) {
   const dayRow = dayRow0 ?? { cloves: 0, bulb_done: 0, bonus: 0 };
   const cloves = dayRow.cloves + cloveGain;
   const bulbCompletedNow = !dayRow.bulb_done && cloves >= BULB_CLOVES - EPS;
+  // The full-bulb bonus grows with the streak you bring into today.
+  const streakBefore = streakInfo({ ...sdBefore, today: day, shields: profile.shields ?? 0 }).streak;
+  const bulbBonusNow = bulbCompletedNow ? bulbBonus(streakBefore) : 0;
   const woven = weaveBraid({ braid: profile.braid, shields: profile.shields, cloveBefore: dayRow.cloves, cloveAfter: cloves });
   let repaired = null;
   if (cloves >= REPAIR_CLOVES - EPS && dayRow.cloves < REPAIR_CLOVES - EPS) {
@@ -307,8 +330,8 @@ export async function recordAttempt(store, user, body, opts = {}) {
     [
       `INSERT INTO attempts (user_id, kind, item_id, chapter, mode, success, misses, alternatives, idea_hints, move_hints, timed, slow_moves,
          surprise, surprise_found, first_miss, principle, duration_ms, user_moves, points, clove_gain, lesson_replay, puzzle_rating,
-         rating_before, rating_after, golden, breakdown, day, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         rating_before, rating_after, golden, stars, breakdown, day, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         user.id,
         kind,
@@ -326,7 +349,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
         surprise ? (surprise.found ? 1 : 0) : null,
         firstMiss,
         principle,
-        int(body.durationMs, 0, 3600e3),
+        durationMs,
         int(body.userMoves, 0, 200),
         points,
         cloveGain,
@@ -335,6 +358,7 @@ export async function recordAttempt(store, user, body, opts = {}) {
         rated ? rating.before : null,
         rated ? rating.after : null,
         golden ? 1 : 0,
+        score.stars,
         JSON.stringify(breakdown),
         day,
         Date.now(),
@@ -371,14 +395,14 @@ export async function recordAttempt(store, user, body, opts = {}) {
     writes.push([
       `INSERT INTO days (user_id, day, cloves, bulb_done, bonus) VALUES (?,?,?,?,?)
        ON CONFLICT(user_id, day) DO UPDATE SET cloves = excluded.cloves, bulb_done = excluded.bulb_done, bonus = excluded.bonus`,
-      [user.id, day, cloves, dayRow.bulb_done || bulbCompletedNow ? 1 : 0, bulbCompletedNow ? BULB_BONUS : dayRow.bonus],
+      [user.id, day, cloves, dayRow.bulb_done || bulbCompletedNow ? 1 : 0, bulbCompletedNow ? bulbBonusNow : dayRow.bonus],
     ]);
   }
   await store.batch(writes);
 
   const [totals, dayAfter] = await Promise.all([getTotals(store, user.id, day), getDay(store, user.id, day)]);
   const ctx = {
-    attempt: { kind, itemId: item.id, chapter: item.chapter, success, clean: score.clean, timed: run.timed, slowMoves: run.slowMoves, surprise, mode },
+    attempt: { kind, itemId: item.id, chapter: item.chapter, success, clean: score.clean, timed: run.timed, slowMoves: run.slowMoves, surprise, mode, stars: score.stars, combo: score.clean ? combo + 1 : 0 },
     totals,
     events: { golden, shieldEarned: woven.earned > 0, repaired: !!repaired, graduated: !!school?.events?.graduated },
   };
@@ -402,9 +426,13 @@ export async function recordAttempt(store, user, body, opts = {}) {
       ? { atLevel, mode, status: school.status, cleanDays: school.cleanDays, needed: GRADUATE_DAYS, reviewDue: school.reviewDue, events: school.events }
       : null,
     deck: deckState ? { status: deckState.status, due: deckState.due, events: deckState.events } : null,
-    day: { ...dayAfter, bulbCompletedNow, bulbBonus: bulbCompletedNow ? BULB_BONUS : 0 },
+    day: { ...dayAfter, bulbCompletedNow, bulbBonus: bulbBonusNow, streakBefore },
+    stars: score.stars,
+    difficulty: score.difficulty,
+    combo: score.clean ? combo + 1 : 0,
+    path: pathChange(totals.points - points - bulbBonusNow, totals.points),
     newAchievements: unlocked.map((id) => publicAchievement(ACHIEVEMENTS.find((a) => a.id === id))),
-    totals: { points: totals.points, rank: totals.rank, streak: totals.streak, shields: totals.shields, graduated: totals.graduated },
+    totals: { points: totals.points, path: totals.path, streak: totals.streak, shields: totals.shields, graduated: totals.graduated },
   };
 }
 
@@ -508,7 +536,9 @@ export async function getLeaderboard(store, authStore, today) {
           bulbs: t.bulbs,
           graduated: t.graduated,
           todayCloves: d.cloves,
-          rank: t.rank.name,
+          stage: t.path.label,
+          world: t.path.info.name,
+          worldIcon: t.path.info.icon,
         };
       }),
   );

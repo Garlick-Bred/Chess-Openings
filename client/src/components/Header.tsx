@@ -3,7 +3,7 @@ import { go, useApp, type Route } from '../App';
 import GarlickBulb from './GarlickBulb';
 
 const NAV = [
-  { page: 'home', label: 'Home', icon: '⌂', also: ['done'] },
+  { page: 'home', label: 'Home', icon: '⌂', also: ['done', 'path'] },
   { page: 'train', label: 'Train', icon: '🎯', also: ['line', 'deck'] },
   { page: 'lines', label: 'Lines', icon: '📖', also: ['lesson', 'principles'] },
   { page: 'games', label: 'Games', icon: '♟' },
@@ -36,10 +36,10 @@ export default function Header({ route }: { route: Route }) {
         <div className="mini-bulb" title={`${me.today.cloves}/5 cloves today`}>
           <GarlickBulb filled={me.today.cloves} size={26} celebrate={false} />
         </div>
-        <div className="points-pill" title="Total points">
-          {me.totals.points.toLocaleString()}
-          <small>pts</small>
-        </div>
+        <a className="points-pill stage-pill" href="#/path" title={`${me.totals.points.toLocaleString()} points · ${me.totals.path.info.name}`} style={{ borderColor: me.totals.path.info.accent }}>
+          <span aria-hidden="true">{me.totals.path.info.icon}</span>
+          {me.totals.path.label}
+        </a>
         <button className="avatar-btn" style={{ background: me.user.color }} onClick={() => setMenu((m) => !m)} aria-label="Account menu">
           {me.user.avatar}
         </button>
@@ -48,8 +48,8 @@ export default function Header({ route }: { route: Route }) {
             <div className="menu-head">
               <b>{me.user.displayName}</b>
               <small>
-                @{me.user.username} · {me.totals.rank.name}
-                {me.user.rating ? ` · ${me.user.rating}` : ''}
+                @{me.user.username} · stage {me.totals.path.label} · {me.totals.points.toLocaleString()} pts
+                {me.user.openingRating ? ` · rating ${me.user.openingRating}` : ''}
               </small>
             </div>
             <button

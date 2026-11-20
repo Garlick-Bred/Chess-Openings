@@ -69,6 +69,7 @@ export function publicUser(u, profile) {
  *   env.INVITE_CODE    - if set, sign-up requires it
  *   env.COOKIE_SECURE  - "1" forces Secure cookies (otherwise https requests get them)
  *   env.EXPLORER_URL   - alternative masters explorer endpoint
+ *   env.LICHESS_TOKEN  - Lichess personal token: unlocks club-player statistics
  */
 export function createApi({ store, authStore = store, env = {} }) {
   const inviteCode = env.INVITE_CODE ?? '';
@@ -119,7 +120,7 @@ export function createApi({ store, authStore = store, env = {} }) {
 
     if (method === 'GET' && path === '/api/health') return json({ ok: true });
     if (method === 'GET' && path === '/api/config') {
-      return json({ inviteRequired: !!inviteCode, avatars: AVATARS, ratingSources: RATING_SOURCES, moveSeconds: MOVE_SECONDS, surpriseRates: SURPRISE_RATES, sharedAccounts: !ownsUsers });
+      return json({ inviteRequired: !!inviteCode, avatars: AVATARS, ratingSources: RATING_SOURCES, moveSeconds: MOVE_SECONDS, surpriseRates: SURPRISE_RATES, sharedAccounts: !ownsUsers, clubStats: !!env.LICHESS_TOKEN });
     }
 
     if (method === 'POST' && path === '/api/auth/register') {
@@ -237,8 +238,10 @@ export function createApi({ store, authStore = store, env = {} }) {
       const fen = url.searchParams.get('fen') ?? '';
       if (!validFen(fen)) throw httpError(400, 'Bad FEN');
       try {
-        return json(await lookup(store, fen, env.EXPLORER_URL, { waitUntil }), 200, { 'Cache-Control': 'private, max-age=86400' });
+        const db = url.searchParams.get('db') === 'club' ? 'club' : 'masters';
+        return json(await lookup(store, fen, env.EXPLORER_URL, { waitUntil, db, token: env.LICHESS_TOKEN ?? '' }), 200, { 'Cache-Control': 'private, max-age=86400' });
       } catch (e) {
+        if (e.status === 503) throw httpError(503, 'Club statistics need a Lichess token on the server.');
         throw httpError(502, `Opening explorer unavailable: ${e.message}`);
       }
     }

@@ -18,7 +18,9 @@ interface Board {
     streak: number;
     graduated: number;
     todayCloves: number;
-    rank: string;
+    stage: string;
+    world: string;
+    worldIcon: string;
   }[];
   lineCount: number;
 }
@@ -59,7 +61,7 @@ export default function LeaderboardPage() {
               <small className="muted">
                 {' '}
                 · {tab === 'rating' && p.rating ? `chess ${p.rating} · ` : ''}
-                {p.rank} · {p.graduated}/{b.lineCount} lines
+                {p.worldIcon} {p.stage} · {p.graduated}/{b.lineCount} lines
               </small>
             </span>
             <span title={`${p.todayCloves}/5 cloves today`}>

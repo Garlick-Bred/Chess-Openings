@@ -324,7 +324,17 @@ function Session({ course, deck, exercise, school }: { course: Course; deck: Dec
 
       {view.phase === 'done' && view.outcome && modalOpen && (
         <ResultModal
-          title={view.outcome.success ? (item ? 'Found it!' : view.surpriseResult?.found ? 'Punished!' : 'Line complete!') : 'Not this time'}
+          title={
+            view.outcome.success
+              ? item
+                ? 'Found it!'
+                : view.surpriseResult?.found
+                  ? 'Punished!'
+                  : 'Line complete!'
+              : line && view.outcome.reason !== 'Stopped early.'
+                ? 'Finished, with misses'
+                : 'Not this time'
+          }
           outcome={view.outcome}
           result={view.result}
           submitError={view.submitError}

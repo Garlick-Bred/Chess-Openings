@@ -36,6 +36,8 @@
 | New lines | Lesson first; the replay after it counts as the day's test (unrated) | Require a separate test the next day |
 | Deck size | All 551 positions, 6 a day | Only the most recent, or only first mistakes |
 | Sign-ups | Open, and new accounts are created in the shared account database | An invite code |
+| The path | 10 stages a world; 100 points a stage in world 1, +50 per world | Faster or slower; more stages per world |
+| Speed par | Thinking time 6 s a move for lines (full bonus at 3 s), 40 s for positions from your games | Tighter for blitz practice |
 
 ## Open questions
 

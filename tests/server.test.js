@@ -86,6 +86,21 @@ describe('recording runs', () => {
     expect(r.deck.due).toBe('2026-11-23');
     expect(r.cloveGain).toBe(1);
   });
+  it('points: combos for clean runs in a row, stars, path progress and a streak-sized bulb bonus', async () => {
+    const { store, user } = await setupShared();
+    const first = await recordAttempt(store, user, run({ thinkMs: 6000 }));
+    expect(first.stars).toBe(3);
+    expect(first.path.before.label).toBe('1-1');
+    const second = await recordAttempt(store, user, run({ itemId: LINES[1].id, userMoves: LINES[1].blackMoves }));
+    expect(second.breakdown.some((b) => /Combo ×2/.test(b.label))).toBe(true);
+    expect(second.combo).toBe(2);
+    const missed = await recordAttempt(store, user, run({ itemId: LINES[2].id, success: false, finished: true, misses: 1, userMoves: LINES[2].blackMoves }));
+    expect(missed.stars).toBe(1);
+    expect(missed.points).toBeGreaterThan(0);
+    const t = await getTotals(store, user.id, DAY);
+    expect(t.path.label).toBe(t.points >= 100 ? '1-2' : '1-1');
+    expect(t.threeStars).toBe(1);
+  });
   it('rejects unknown lines', async () => {
     const { store, user } = await setupShared();
     await expect(recordAttempt(store, user, run({ itemId: 'nope' }))).rejects.toThrow(/Unknown line/);

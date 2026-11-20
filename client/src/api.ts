@@ -69,12 +69,28 @@ export interface Config {
   sharedAccounts: boolean;
 }
 
-export interface Rank {
+export interface World {
+  number: number;
   name: string;
-  index: number;
-  next: string | null;
+  icon: string;
+  scenery: string[];
+  accent: string;
+  bg: [string, string];
+  blurb: string;
+}
+
+/** Where a points total sits on the Garlick Path (shared/path.js). */
+export interface PathPos {
+  world: number;
+  stage: number;
+  label: string;
+  into: number;
+  step: number;
   progress: number;
   toNext: number;
+  nextLabel: string;
+  stageStart: number;
+  info: World;
 }
 
 export interface Totals {
@@ -98,7 +114,8 @@ export interface Totals {
   graduatedByChapter: Record<string, number>;
   chapterLines: Record<string, number>;
   lineCount: number;
-  rank: Rank;
+  threeStars: number;
+  path: PathPos;
 }
 
 export interface DayInfo {
@@ -141,6 +158,12 @@ export interface Me {
 
 export interface AttemptResult {
   points: number;
+  /** 1 finished, 2 clean, 3 clean and fast. */
+  stars: number;
+  difficulty: string;
+  /** Clean runs in a row today, including this one (0 if this one wasn't clean). */
+  combo: number;
+  path: { before: PathPos; after: PathPos; stagesUp: number; newWorld: World | null };
   breakdown: { label: string; points: number }[];
   clean: boolean;
   cloveGain: number;
@@ -161,9 +184,9 @@ export interface AttemptResult {
     events: { tested?: boolean; learnedDay?: boolean; graduated?: boolean; reviewPassed?: boolean; reviewSlow?: boolean; demoted?: boolean; reset?: boolean };
   } | null;
   deck: { status: string; due: string | null; events: { mastered?: boolean } } | null;
-  day: DayInfo & { bulbCompletedNow: boolean; bulbBonus: number };
+  day: DayInfo & { bulbCompletedNow: boolean; bulbBonus: number; streakBefore: number };
   newAchievements: { id: string; name: string; icon: string; desc: string }[];
-  totals: { points: number; rank: Rank; streak: number; shields: number; graduated: number };
+  totals: { points: number; path: PathPos; streak: number; shields: number; graduated: number };
 }
 
 export interface ExplorerData {
